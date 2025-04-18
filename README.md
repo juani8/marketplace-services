@@ -8,8 +8,8 @@ Este proyecto es un backend desarrollado con **Node.js** y **Express**, utilizan
 
 ```json
 "scripts": {
-  "dev": "nodemon src/server.js",
-  "start": "node src/server.js",
+  "dev": "nodemon src/app.js",
+  "start": "node src/app.js",
   "init-db": "node src/config/db_init_model.js"
 }
 ```
@@ -63,8 +63,7 @@ src/
 │   ├── producto.routes.js
 │   └── promocion.routes.js
 │
-├── app.js            # Configuración y uso de middlewares
-└── server.js         # Punto de entrada del servidor
+└── app.js            # Configuración, uso de middlewares y punto de entrada del servidor
 ```
 
 ---
