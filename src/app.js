@@ -6,15 +6,16 @@ const pool = require('./config/db_connection');
 
 const app = express();
 
-// Middlewares
+// ✅ CORS antes que nada
 app.use(cors({
-  origin: [process.env.FRONTEND_URL, 'http://localhost:5173'],
+  origin: ['https://marketplace-mv6g.onrender.com', 'http://localhost:5173'],
   credentials: true
 }));
+
 app.use(morgan('dev'));
 app.use(express.json());
 
-// Ruta para verificar el estado del backend
+// Endpoint de test
 app.get('/status', async (req, res) => {
   try {
     const result = await pool.query('SELECT NOW()');
@@ -28,13 +29,14 @@ app.get('/status', async (req, res) => {
   }
 });
 
-// Rutas
-// app.use('/api/ejemplo', ejemploRoutes);
-
+// Error handler
 app.use((err, req, res, next) => {
   console.error(err.stack);
   res.status(500).json({ message: 'Algo salió mal!' });
 });
 
-pool.query('SELECT NOW()')
-module.exports = app;
+// ✅ Esto es importante para Render
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`Servidor escuchando en el puerto ${PORT}`);
+});
