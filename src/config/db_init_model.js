@@ -1,8 +1,8 @@
 const fs = require('fs');
 const path = require('path');
-const pool = require('../config/db');
+const pool = require('./db_connection');
 
-const sqlPath = path.join(__dirname, '../db/init.sql');
+const sqlPath = path.join(__dirname, './db_model.sql');
 const sql = fs.readFileSync(sqlPath, 'utf-8');
 
 pool.query(sql)
