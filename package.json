@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "nodemon src/app.js",
     "start": "node src/app.js",
-    "init-db": "node src/config/db_init_model.js"
+    "init-db": "node src/config/db_init_model.js",
+    "drop-db": "node src/config/db_exec_drop_tables.js"
   },
   "keywords": [],
   "author": "",
