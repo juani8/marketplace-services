@@ -1,4 +1,4 @@
-# 🛠️ Backend Multitenant - Node.js + Express + PostgreSQL
+# 🛠️ Backend Marketplace - Node.js + Express + PostgreSQL
 
 Este proyecto es un backend desarrollado con **Node.js** y **Express**, utilizando una base de datos **PostgreSQL** desplegada en **Render**. Está diseñado para gestionar múltiples comercios (tenants) y sus respectivos catálogos, productos y promociones.
 
