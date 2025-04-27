@@ -39,34 +39,16 @@ const TenantModel = {
 
   // Método para crear un nuevo tenant
   async create(tenantData) {
-    const {
-      nombre,
-      razon_social,
-      cuenta_bancaria,
-      datos_contacto,
-      direccion,
-      configuracion_operativa,
-      catalogo_id,
-      estado
-    } = tenantData;
-
+    const { nombre, razon_social, cuenta_bancaria, direccion, configuracion_operativa, estado } = tenantData;
+  
     const res = await pool.query(
       `INSERT INTO tenants 
-      (nombre, razon_social, cuenta_bancaria, datos_contacto, direccion, configuracion_operativa, catalogo_id, estado)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-      RETURNING *`,
-      [
-        nombre,
-        razon_social,
-        cuenta_bancaria,
-        datos_contacto,
-        direccion,
-        configuracion_operativa,
-        catalogo_id,
-        estado
-      ]
+        (nombre, razon_social, cuenta_bancaria, direccion, configuracion_operativa, estado)
+       VALUES ($1, $2, $3, $4, $5, $6)
+       RETURNING *`,
+      [nombre, razon_social, cuenta_bancaria, direccion, configuracion_operativa, estado]
     );
-
+  
     return res.rows[0];
   },
 
