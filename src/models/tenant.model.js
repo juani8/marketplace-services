@@ -66,6 +66,28 @@ const TenantModel = {
   // Método para eliminar un tenant
   async delete(id) {
     await pool.query('DELETE FROM tenants WHERE tenant_id = $1', [id]);
+  },
+
+  async patch(id, fieldsToUpdate) {
+    const keys = Object.keys(fieldsToUpdate);
+    if (keys.length === 0) {
+      throw new Error('No hay campos para actualizar.');
+    }
+  
+    // Generar dinámicamente el SET de SQL
+    const setQuery = keys.map((key, index) => `${key} = $${index + 1}`).join(', ');
+  
+    const values = Object.values(fieldsToUpdate);
+  
+    const res = await pool.query(
+      `UPDATE tenants
+       SET ${setQuery}, fecha_actualizacion = NOW()
+       WHERE tenant_id = $${values.length + 1}
+       RETURNING *`,
+      [...values, id]
+    );
+  
+    return res.rows[0];
   }
 };
 

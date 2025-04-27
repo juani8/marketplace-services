@@ -9,4 +9,7 @@ router.get('/', tenantController.getAllTenants);
 // POST /api/tenants
 router.post('/', tenantController.createTenant);
 
+
+// PATCH /api/tenants/:id
+router.patch('/:tenantId', tenantController.patchTenant);
 module.exports = router;
