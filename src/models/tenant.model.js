@@ -1,4 +1,4 @@
-const pool = require('../config/db');
+const pool = require('../config/db_connection');
 
 // Modelo de Tenant
 const TenantModel = {

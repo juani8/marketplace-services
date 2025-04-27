@@ -4,6 +4,9 @@ const morgan = require('morgan');
 require('dotenv').config();
 const pool = require('./config/db_connection');
 
+// Rutas
+const tenantRoutes = require('./routes/tenantRoutes');
+
 const app = express();
 
 // ✅ CORS antes que nada
@@ -14,6 +17,9 @@ app.use(cors({
 
 app.use(morgan('dev'));
 app.use(express.json());
+
+// Rutas
+app.use('/api/tenants', tenantRoutes);
 
 // Endpoint de test
 app.get('/status', async (req, res) => {
