@@ -208,3 +208,35 @@ Obtiene una lista paginada de todos los tenants registrados en el sistema.
     "currentPage": 2
   }
 }
+```
+
+#### `POST /api/tenants`
+
+Crea un nuevo tenant en el sistema.
+
+##### 📥 Body
+
+Debe enviarse un JSON con los siguientes campos:
+
+| Campo                     | Tipo     | Obligatorio | Descripción                                                  |
+|:---------------------------|:---------|:------------|:-------------------------------------------------------------|
+| `nombre`                   | string   | Sí          | Nombre del tenant (comercio o empresa).                      |
+| `razon_social`             | string   | Sí          | Razón social registrada del tenant.                         |
+| `cuenta_bancaria`          | string   | No          | Cuenta bancaria asociada (opcional).                         |
+| `direccion`                | string   | No          | Dirección física del tenant (opcional).                      |
+| `configuracion_operativa`  | JSON     | No          | Configuraciones internas (horarios de atención, políticas, etc). |
+
+**Ejemplo de body:**
+
+```json
+{
+  "nombre": "Supermercado La Plaza",
+  "razon_social": "La Plaza SRL",
+  "cuenta_bancaria": "123-456-789",
+  "direccion": "Av. Siempre Viva 742",
+  "configuracion_operativa": {
+    "horario_apertura": "09:00",
+    "horario_cierre": "18:00"
+  }
+}
+```
