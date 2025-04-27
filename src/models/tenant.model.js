@@ -2,9 +2,33 @@ const pool = require('../config/db_connection');
 
 // Modelo de Tenant
 const TenantModel = {
-  async getAll() {
-    const res = await pool.query('SELECT * FROM tenants');
-    return res.rows;
+  async getAll(page = 1, size = 10) {
+    const limit = size;
+    const offset = (page - 1) * size;
+
+    const res = await pool.query(
+      `SELECT 
+        t.*,
+        dc.email,
+        dc.telefono,
+        dc.movil,
+        dc.direccion AS direccion_contacto,
+        dc.sitio_web,
+        dc.linkedin
+      FROM tenants t
+      LEFT JOIN datos_contacto dc ON t.tenant_id = dc.tenant_id
+      ORDER BY t.tenant_id
+      LIMIT $1 OFFSET $2`,
+      [limit, offset]
+    );
+
+    const countRes = await pool.query('SELECT COUNT(*) FROM tenants');
+    const totalItems = parseInt(countRes.rows[0].count);
+
+    return {
+      data: res.rows,
+      totalItems
+    };
   },
 
   // Método para obtener un tenant por ID

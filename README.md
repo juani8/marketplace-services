@@ -162,3 +162,49 @@ Este proyecto fue desplegado de la siguiente forma:
 - **Base de Datos**: PostgreSQL, desplegada como servicio de base de datos en Render.
 
 Todos los servicios se comunican entre sí utilizando HTTPS y conexiones seguras.
+
+
+## 📄 Endpoints - API
+
+### 🏢 **Tenants**
+
+#### `GET /api/tenants`
+
+Obtiene una lista paginada de todos los tenants registrados en el sistema.
+
+##### 📥 Parámetros de consulta (Query Parameters)
+
+| Parámetro | Tipo    | Opcional | Descripción                                       |
+|:----------|:--------|:---------|:-------------------------------------------------|
+| `page`    | integer | Sí       | Número de página (por defecto `1`)               |
+| `size`    | integer | Sí       | Cantidad de registros por página (por defecto `10`) |
+
+##### 📤 Respuesta
+
+```json
+{
+  "data": [
+    {
+      "tenant_id": 1,
+      "nombre": "Supermercado La Plaza",
+      "razon_social": "La Plaza SRL",
+      "cuenta_bancaria": "123-456-789",
+      "direccion": "Av. Siempre Viva 742",
+      "configuracion_operativa": {},
+      "estado": "activo",
+      "fecha_registro": "2025-04-27T15:00:00.000Z",
+      "fecha_actualizacion": "2025-04-27T15:00:00.000Z",
+      "email": "contacto@laplaza.com",
+      "telefono": "011-1234-5678",
+      "movil": "11-6543-2109",
+      "direccion_contacto": "Sucursal 1, CABA",
+      "sitio_web": "https://laplaza.com",
+      "linkedin": "https://linkedin.com/company/laplaza"
+    }
+  ],
+  "pagination": {
+    "totalItems": 42,
+    "totalPages": 5,
+    "currentPage": 2
+  }
+}
