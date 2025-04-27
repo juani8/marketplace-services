@@ -240,3 +240,27 @@ Debe enviarse un JSON con los siguientes campos:
   }
 }
 ```
+#### `PATCH /api/tenants/:tenantId`
+
+Actualiza parcialmente los datos de un tenant existente.
+
+##### 📥 Body
+
+Debe enviarse un JSON con **uno o más** de los siguientes campos:
+
+| Campo                     | Tipo     | Obligatorio | Descripción                                                  |
+|:---------------------------|:---------|:------------|:-------------------------------------------------------------|
+| `nombre`                   | string   | No           | Nombre del tenant (comercio o empresa).                      |
+| `razon_social`             | string   | No           | Razón social registrada del tenant.                         |
+| `cuenta_bancaria`          | string   | No           | Cuenta bancaria asociada (opcional).                         |
+| `direccion`                | string   | No           | Dirección física del tenant (opcional).                      |
+| `configuracion_operativa`  | JSON     | No           | Configuraciones internas (horarios de atención, políticas, etc.). |
+
+**Ejemplo de body (actualización parcial):**
+
+```json
+{
+  "nombre": "Nuevo Nombre Actualizado",
+  "cuenta_bancaria": "999-888-777"
+}
+```
