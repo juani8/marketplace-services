@@ -12,4 +12,11 @@ router.post('/', tenantController.createTenant);
 
 // PATCH /api/tenants/:id
 router.patch('/:tenantId', tenantController.patchTenant);
+
+
+// DELETE /api/tenants/:tenantId
+router.delete('/:tenantId', tenantController.deleteTenant);
+
 module.exports = router;
+
+

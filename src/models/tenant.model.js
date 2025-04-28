@@ -39,14 +39,14 @@ const TenantModel = {
 
   // Método para crear un nuevo tenant
   async create(tenantData) {
-    const { nombre, razon_social, cuenta_bancaria, direccion, configuracion_operativa, estado } = tenantData;
+    const { nombre, razon_social, cuenta_bancaria, direccion, lat, lon, configuracion_operativa, estado } = tenantData;
   
     const res = await pool.query(
       `INSERT INTO tenants 
-        (nombre, razon_social, cuenta_bancaria, direccion, configuracion_operativa, estado)
-       VALUES ($1, $2, $3, $4, $5, $6)
+        (nombre, razon_social, cuenta_bancaria, direccion, lat, lon, configuracion_operativa, estado)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
        RETURNING *`,
-      [nombre, razon_social, cuenta_bancaria, direccion, configuracion_operativa, estado]
+      [nombre, razon_social, cuenta_bancaria, direccion, lat, lon, configuracion_operativa, estado]
     );
   
     return res.rows[0];
@@ -88,7 +88,42 @@ const TenantModel = {
     );
   
     return res.rows[0];
-  }
+  },
+
+
+  async findNearbySellers(lat, lon, deliveryRadiusKm) {
+    const res = await pool.query(
+      `SELECT 
+        tenant_id,
+        nombre,
+        razon_social,
+        direccion,
+        lat,
+        lon,
+        configuracion_operativa,
+        estado,
+        fecha_registro,
+        fecha_actualizacion,
+        (6371 * acos(
+          cos(radians($1)) * cos(radians(lat)) * cos(radians(lon) - radians($2)) +
+          sin(radians($1)) * sin(radians(lat))
+        )) AS distance_km
+      FROM tenants
+      WHERE lat IS NOT NULL 
+        AND lon IS NOT NULL 
+        AND estado = 'activo'
+      AND (6371 * acos(
+          cos(radians($1)) * cos(radians(lat)) * cos(radians(lon) - radians($2)) +
+          sin(radians($1)) * sin(radians(lat))
+        )) <= $3
+      ORDER BY distance_km ASC`,
+      [lat, lon, deliveryRadiusKm]
+    );
+  
+    return res.rows;
+    },
 };
+
+
 
 module.exports = TenantModel;

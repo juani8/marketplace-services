@@ -5,6 +5,8 @@ CREATE TABLE IF NOT EXISTS tenants (
   razon_social      VARCHAR(150),
   cuenta_bancaria   VARCHAR(100),
   direccion         VARCHAR(200),
+  lon               NUMERIC(9,6), 
+  lat               NUMERIC(9,6),
   configuracion_operativa JSONB,
   estado            VARCHAR(20)  DEFAULT 'activo' CHECK (estado IN ('activo','inactivo')),
   fecha_registro    TIMESTAMP     DEFAULT CURRENT_TIMESTAMP,

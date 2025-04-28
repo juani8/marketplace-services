@@ -29,11 +29,13 @@ Este proyecto requiere las siguientes dependencias:
 - `morgan`: Middleware de logging.
 - `pg`: Cliente de PostgreSQL para Node.js.
 - `nodemon`: Recarga automática del servidor durante el desarrollo.
+- `node-fetch`: (Usado para geolocalización)
 
 Instalarlas mediante el siguiente comando:
 ```bash
 npm install
 ```
+
 ---
 
 ## 📁 Estructura de carpetas
@@ -47,7 +49,8 @@ src/
 │   ├── tenant.controller.js
 │   ├── catalogo.controller.js
 │   ├── producto.controller.js
-│   └── promocion.controller.js
+│   ├── promocion.controller.js
+│   └── seller.controller.js
 │
 ├── middlewares/      # Middlewares personalizados (próximamente)
 │
@@ -55,15 +58,16 @@ src/
 │   ├── tenant.model.js
 │   ├── catalogo.model.js
 │   ├── producto.model.js
-│   └── promocion.model.js
+│   ├── promocion.model.js
 │
 ├── routes/           # Rutas HTTP
 │   ├── tenant.routes.js
 │   ├── catalogo.routes.js
 │   ├── producto.routes.js
-│   └── promocion.routes.js
+│   ├── promocion.routes.js
+│   └── seller.routes.js
 │
-└── app.js            # Configuración, uso de middlewares y punto de entrada del servidor
+└── app.js             # Configuración, uso de middlewares y punto de entrada del servidor
 ```
 
 ---
@@ -89,18 +93,18 @@ A continuación se detalla el modelo relacional utilizado en la base de datos Po
 ### 🏢 Tenants
 
 | Columna                  | Tipo                         | Nullable |
-|--------------------------|------------------------------|----------|
-| tenant_id                | integer (PK)                 | NO       |
-| nombre                   | text                         | NO       |
-| razon_social             | text                         | SÍ       |
-| cuenta_bancaria          | text                         | SÍ       |
-| datos_contacto           | jsonb                        | SÍ       |
-| direccion                | text                         | SÍ       |
-| configuracion_operativa | jsonb                        | SÍ       |
-| catalogo_id              | integer                      | SÍ       |
-| estado                   | text                         | SÍ       |
-| fecha_registro           | timestamp without time zone | SÍ       |
-| fecha_actualizacion      | timestamp without time zone | SÍ       |
+|---------------------------|------------------------------|----------|
+| tenant_id                 | integer (PK)                 | NO       |
+| nombre                    | varchar(100)                 | NO       |
+| razon_social              | varchar(150)                 | SÍ       |
+| cuenta_bancaria           | varchar(100)                 | SÍ       |
+| direccion                 | varchar(200)                 | SÍ       |
+| lon                       | numeric(9,6)                 | SÍ       |
+| lat                       | numeric(9,6)                 | SÍ       |
+| configuracion_operativa   | jsonb                        | SÍ       |
+| estado                    | varchar(20)                  | SÍ       |
+| fecha_registro            | timestamp without time zone  | SÍ       |
+| fecha_actualizacion       | timestamp without time zone  | SÍ       |
 
 ---
 
@@ -114,7 +118,7 @@ A continuación se detalla el modelo relacional utilizado en la base de datos Po
 
 ---
 
-### 🛒 Productos
+### 🛂 Productos
 
 | Columna         | Tipo                         | Nullable |
 |-----------------|------------------------------|----------|
@@ -125,12 +129,12 @@ A continuación se detalla el modelo relacional utilizado en la base de datos Po
 | precio          | numeric                      | SÍ       |
 | cantidad_stock  | integer                      | SÍ       |
 | categoria       | text                         | SÍ       |
-| imagenes        | ARRAY                        | SÍ       |
-| fecha_creacion  | timestamp without time zone | SÍ       |
+| imagenes        | array                        | SÍ       |
+| fecha_creacion  | timestamp without time zone  | SÍ       |
 
 ---
 
-### 🎁 Promociones
+### 🏱️ Promociones
 
 | Columna         | Tipo                         | Nullable |
 |-----------------|------------------------------|----------|
@@ -163,6 +167,7 @@ Este proyecto fue desplegado de la siguiente forma:
 
 Todos los servicios se comunican entre sí utilizando HTTPS y conexiones seguras.
 
+---
 
 ## 📄 Endpoints - API
 
@@ -170,16 +175,16 @@ Todos los servicios se comunican entre sí utilizando HTTPS y conexiones seguras
 
 #### `GET /api/tenants`
 
-Obtiene una lista paginada de todos los tenants registrados en el sistema.
+Obtiene una lista paginada de todos los tenants registrados.
 
-##### 📥 Parámetros de consulta (Query Parameters)
+##### 👅 Query Parameters
 
-| Parámetro | Tipo    | Opcional | Descripción                                       |
-|:----------|:--------|:---------|:-------------------------------------------------|
-| `page`    | integer | Sí       | Número de página (por defecto `1`)               |
-| `size`    | integer | Sí       | Cantidad de registros por página (por defecto `10`) |
+| Parámetro | Tipo    | Opcional | Descripción |
+|:-----------|:--------|:---------|:------------|
+| page       | integer | Sí       | Número de página (default: 1) |
+| size       | integer | Sí       | Tamaño de página (default: 10) |
 
-##### 📤 Respuesta
+##### 📄 Ejemplo de respuesta
 
 ```json
 {
@@ -190,6 +195,8 @@ Obtiene una lista paginada de todos los tenants registrados en el sistema.
       "razon_social": "La Plaza SRL",
       "cuenta_bancaria": "123-456-789",
       "direccion": "Av. Siempre Viva 742",
+      "lat": -34.603722,
+      "lon": -58.381592,
       "configuracion_operativa": {},
       "estado": "activo",
       "fecha_registro": "2025-04-27T15:00:00.000Z",
@@ -210,13 +217,15 @@ Obtiene una lista paginada de todos los tenants registrados en el sistema.
 }
 ```
 
+---
+
 #### `POST /api/tenants`
 
-Crea un nuevo tenant en el sistema.
+Crea un nuevo tenant.
 
-##### 📥 Body
+- La dirección se geocodifica automáticamente a lat/lon.
 
-Debe enviarse un JSON con los siguientes campos:
+##### 👅 Body esperado
 
 | Campo                     | Tipo     | Obligatorio | Descripción                                                  |
 |:---------------------------|:---------|:------------|:-------------------------------------------------------------|
@@ -226,20 +235,22 @@ Debe enviarse un JSON con los siguientes campos:
 | `direccion`                | string   | No          | Dirección física del tenant (opcional).                      |
 | `configuracion_operativa`  | JSON     | No          | Configuraciones internas (horarios de atención, políticas, etc). |
 
-**Ejemplo de body:**
 
 ```json
 {
   "nombre": "Supermercado La Plaza",
   "razon_social": "La Plaza SRL",
   "cuenta_bancaria": "123-456-789",
-  "direccion": "Av. Siempre Viva 742",
+  "direccion": "Av. Corrientes 1000, CABA, Argentina",
   "configuracion_operativa": {
     "horario_apertura": "09:00",
     "horario_cierre": "18:00"
   }
 }
 ```
+
+---
+
 #### `PATCH /api/tenants/:tenantId`
 
 Actualiza parcialmente los datos de un tenant existente.
@@ -256,6 +267,7 @@ Debe enviarse un JSON con **uno o más** de los siguientes campos:
 | `direccion`                | string   | No           | Dirección física del tenant (opcional).                      |
 | `configuracion_operativa`  | JSON     | No           | Configuraciones internas (horarios de atención, políticas, etc.). |
 
+
 **Ejemplo de body (actualización parcial):**
 
 ```json
@@ -264,3 +276,46 @@ Debe enviarse un JSON con **uno o más** de los siguientes campos:
   "cuenta_bancaria": "999-888-777"
 }
 ```
+
+#### `DELETE /api/tenants/:tenantId`
+
+Elimina un tenant.
+
+- Emite evento `baja_tenant_iniciada`.
+- Respuesta: **204 No Content**
+
+---
+
+### 🛂 **Sellers (consulta de tenants cercanos)**
+
+#### `GET /api/sellers?lat={lat}&lon={lon}`
+
+Devuelve sellers cercanos según la ubicación del cliente.
+
+- Radio de entrega de 5 km.
+- Ordenado de **más cercano a más lejano**.
+
+##### 👅 Query Parameters
+
+| Parámetro | Tipo    | Obligatorio | Descripción |
+|:-----------|:--------|:------------|:------------|
+| lat        | decimal | Sí          | Latitud cliente |
+| lon        | decimal | Sí          | Longitud cliente |
+
+##### 📄 Ejemplo de respuesta
+
+```json
+[
+  {
+    "tenant_id": 13,
+    "nombre": "Café Obelisco",
+    "direccion": "Av. Corrientes 1100, CABA",
+    "lat": -34.603500,
+    "lon": -58.381000,
+    "configuracion_operativa": {
+      "tipo": "cafetería"
+    },
+    "estado": "activo",
+    "distance_km": 0.0595
+  }
+]

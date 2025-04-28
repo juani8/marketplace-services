@@ -6,6 +6,8 @@ const pool = require('./config/db_connection');
 
 // Rutas
 const tenantRoutes = require('./routes/tenantRoutes');
+const sellerRoutes = require('./routes/sellerRoutes');
+
 
 const app = express();
 
@@ -20,6 +22,7 @@ app.use(express.json());
 
 // Rutas
 app.use('/api/tenants', tenantRoutes);
+app.use('/api/sellers', sellerRoutes);
 
 // Endpoint de test
 app.get('/status', async (req, res) => {
