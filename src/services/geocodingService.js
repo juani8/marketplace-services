@@ -3,7 +3,8 @@ require('dotenv').config();
 const LOCATIONIQ_API_KEY = process.env.LOCATIONIQ_API_KEY;
 
 async function geocodeAddress(address) {
-  const url = `https://us1.locationiq.com/v1/search?key=${LOCATIONIQ_API_KEY}&q=${encodeURIComponent(address)}&format=json&limit=1`;
+  const url = `https://us1.locationiq.com/v1/search?key=${LOCATIONIQ_API_KEY}&q=${encodeURIComponent(address)}&countrycodes=ar&format=json&limit=1`;
+
 
   const response = await fetch(url);
 
