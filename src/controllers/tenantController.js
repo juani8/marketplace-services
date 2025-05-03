@@ -42,7 +42,14 @@ async function createTenant(req, res) {
     }
 
     // Geocodificamos la dirección
-    const { lat, lon } = await geocodeAddress(direccion);
+    let lat, lon;
+    try {
+      const location = await geocodeAddress(direccion);
+      lat = location.lat;
+      lon = location.lon;
+    } catch (geoError) {
+      return res.status(400).json({ message: 'Dirección inválida o no encontrada. Por favor verifica la dirección ingresada.' });
+    }
 
     const newTenant = await TenantModel.create({
       nombre,
