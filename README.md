@@ -320,15 +320,18 @@ Devuelve sellers cercanos según la ubicación del cliente.
   }
 ]
 
+### 📦 **Catálogos**
 
-### 🛂 **Sellers (Gestión de catálogos y productos)**
+#### `GET /api/sellers/:sellerId/catalogs`
 
-#### `GET /api/sellers/{sellerId}/catalog`
+Obtiene todos los catálogos de un seller específico.
 
-Obtiene todos los catálogos de un seller con sus productos.
+##### Parámetros de URL
+| Parámetro | Tipo    | Obligatorio | Descripción |
+|:----------|:--------|:------------|:------------|
+| sellerId  | integer | Sí          | ID del seller |
 
 ##### 📄 Ejemplo de respuesta
-
 ```json
 [
   {
@@ -337,67 +340,88 @@ Obtiene todos los catálogos de un seller con sus productos.
     "productos": [
       {
         "producto_id": "1",
-        "nombre_producto": "Pizza Especial",
-        "descripcion": "Pizza con jamón, morrón, huevo y aceitunas",
-        "precio": 4300,
-        "cantidad_stock": 50,
+        "nombre_producto": "Pizza Margherita",
+        "descripcion": "Pizza con salsa de tomate, mozzarella y albahaca",
+        "precio": 3500,
+        "cantidad_stock": 20,
         "categoria": "Pizzas",
-        "imagenes": ["https://ejemplo.com/imagen1.jpg"],
-        "promociones": []
+        "imagenes": [
+          "https://example.com/img/margherita.jpg"
+        ],
+        "promociones": [
+          {
+            "promocion_id": "1",
+            "tenant_id": "1",
+            "nombre": "2x1 en Pizzas",
+            "descripcion": "Llevá 2 pizzas al precio de 1",
+            "tipo_promocion": "2x1",
+            "fecha_inicio": "2025-05-10T17:57:02.710Z",
+            "fecha_fin": "2025-05-10T17:57:02.710Z",
+            "productos_incluidos": ["1"],
+            "estado": "activa"
+          }
+        ]
       }
     ],
-    "fecha_actualizacion": "2024-03-20T15:00:00.000Z"
+    "fecha_actualizacion": "2025-05-10T17:57:02.710Z"
   }
 ]
 ```
 
-#### `GET /api/sellers/{sellerId}/catalog/{catalogId}`
+---
 
-Obtiene un catálogo específico con todos sus productos.
+#### `GET /api/catalogs/:catalogId`
 
-##### 📄 Ejemplo de respuesta
+Obtiene un catálogo específico por su ID.
 
-```json
-{
-  "catalogo_id": "1",
-  "tenant_id": "1",
-  "productos": [
-    {
-      "producto_id": "1",
-      "nombre_producto": "Pizza Especial",
-      "descripcion": "Pizza con jamón, morrón, huevo y aceitunas",
-      "precio": 4300,
-      "cantidad_stock": 50,
-      "categoria": "Pizzas",
-      "imagenes": ["https://ejemplo.com/imagen1.jpg"],
-      "promociones": []
-    }
-  ],
-  "fecha_actualizacion": "2024-03-20T15:00:00.000Z"
-}
-```
-
-#### `POST /api/sellers/{sellerId}/catalog`
-
-Crea un nuevo catálogo para un seller.
+##### Parámetros de URL
+| Parámetro | Tipo    | Obligatorio | Descripción |
+|:----------|:--------|:------------|:------------|
+| catalogId | integer | Sí          | ID del catálogo |
 
 ##### 📄 Ejemplo de respuesta
-
 ```json
 {
   "catalogo_id": "1",
   "tenant_id": "1",
   "productos": [],
-  "fecha_actualizacion": "2024-03-20T15:00:00.000Z"
+  "fecha_actualizacion": "2025-05-10T17:57:02.710Z"
 }
 ```
 
-#### `DELETE /api/sellers/{sellerId}/catalog/{catalogId}`
+---
 
-Elimina un catálogo específico y todos sus productos.
+#### `POST /api/sellers/:sellerId/catalogs`
+
+Crea un nuevo catálogo para un seller.
+
+##### Parámetros de URL
+| Parámetro | Tipo    | Obligatorio | Descripción |
+|:----------|:--------|:------------|:------------|
+| sellerId  | integer | Sí          | ID del seller |
 
 ##### 📄 Ejemplo de respuesta
+```json
+{
+  "catalogo_id": "1",
+  "tenant_id": "1",
+  "productos": [],
+  "fecha_actualizacion": "2025-05-10T17:57:02.710Z"
+}
+```
 
+---
+
+#### `DELETE /api/catalogs/:catalogId`
+
+Elimina un catálogo específico.
+
+##### Parámetros de URL
+| Parámetro | Tipo    | Obligatorio | Descripción |
+|:----------|:--------|:------------|:------------|
+| catalogId | integer | Sí          | ID del catálogo |
+
+##### 📄 Ejemplo de respuesta
 ```json
 {
   "message": "Catálogo ID 1 del seller ID 1 fue eliminado exitosamente",
@@ -408,52 +432,76 @@ Elimina un catálogo específico y todos sus productos.
 }
 ```
 
-#### `GET /api/sellers/{sellerId}/catalog/{catalogId}/products`
+---
+
+#### `GET /api/catalogs/:catalogId/products`
 
 Obtiene todos los productos de un catálogo específico.
 
-##### 📄 Ejemplo de respuesta
+##### Parámetros de URL
+| Parámetro | Tipo    | Obligatorio | Descripción |
+|:----------|:--------|:------------|:------------|
+| catalogId | integer | Sí          | ID del catálogo |
 
+##### 📄 Ejemplo de respuesta
 ```json
 [
   {
     "producto_id": "1",
-    "nombre_producto": "Pizza Especial",
-    "descripcion": "Pizza con jamón, morrón, huevo y aceitunas",
-    "precio": 4300,
-    "cantidad_stock": 50,
+    "nombre_producto": "Pizza Margherita",
+    "descripcion": "Pizza con salsa de tomate, mozzarella y albahaca",
+    "precio": 3500,
+    "cantidad_stock": 20,
     "categoria": "Pizzas",
-    "imagenes": ["https://ejemplo.com/imagen1.jpg"],
+    "imagenes": [
+      "https://example.com/img/margherita.jpg"
+    ],
     "promociones": []
   }
 ]
 ```
 
-#### `GET /api/sellers/{sellerId}/catalog/{catalogId}/products/{productId}`
+---
 
-Obtiene un producto específico de un catálogo.
+### 🛍️ **Productos**
+
+#### `GET /api/products/:productId`
+
+Obtiene un producto específico por su ID.
+
+##### Parámetros de URL
+| Parámetro | Tipo    | Obligatorio | Descripción |
+|:----------|:--------|:------------|:------------|
+| productId | integer | Sí          | ID del producto |
 
 ##### 📄 Ejemplo de respuesta
-
 ```json
 {
   "producto_id": "1",
-  "nombre_producto": "Pizza Especial",
-  "descripcion": "Pizza con jamón, morrón, huevo y aceitunas",
-  "precio": 4300,
-  "cantidad_stock": 50,
+  "nombre_producto": "Pizza Margherita",
+  "descripcion": "Pizza con salsa de tomate, mozzarella y albahaca",
+  "precio": 3500,
+  "cantidad_stock": 20,
   "categoria": "Pizzas",
-  "imagenes": ["https://ejemplo.com/imagen1.jpg"],
+  "imagenes": [
+    "https://example.com/img/margherita.jpg"
+  ],
   "promociones": []
 }
 ```
 
-#### `POST /api/sellers/{sellerId}/catalog/{catalogId}/products`
+---
 
-Crea un nuevo producto en un catálogo.
+#### `POST /api/catalogs/:catalogId/products`
 
-#####  Body esperado
+Crea un nuevo producto en un catálogo específico.
 
+##### Parámetros de URL
+| Parámetro | Tipo    | Obligatorio | Descripción |
+|:----------|:--------|:------------|:------------|
+| catalogId | integer | Sí          | ID del catálogo |
+
+##### Body esperado
 ```json
 {
   "nombre_producto": "Pizza Especial",
@@ -461,73 +509,93 @@ Crea un nuevo producto en un catálogo.
   "precio": 4300,
   "cantidad_stock": 50,
   "categoria": "Pizzas",
-  "imagenes": ["https://ejemplo.com/imagen1.jpg"]
+  "imagenes": [
+    "https://example.com/img/pizza-especial-1.jpg",
+    "https://example.com/img/pizza-especial-2.jpg"
+  ]
 }
 ```
 
 ##### 📄 Ejemplo de respuesta
-
 ```json
 {
   "message": "Producto creado exitosamente",
   "producto": {
-    "producto_id": "1",
+    "producto_id": "2",
     "nombre_producto": "Pizza Especial",
     "descripcion": "Pizza con jamón, morrón, huevo y aceitunas",
     "precio": 4300,
     "cantidad_stock": 50,
     "categoria": "Pizzas",
-    "imagenes": ["https://ejemplo.com/imagen1.jpg"],
+    "imagenes": [
+      "https://example.com/img/pizza-especial-1.jpg",
+      "https://example.com/img/pizza-especial-2.jpg"
+    ],
     "promociones": []
   }
 }
 ```
 
-#### `PATCH /api/sellers/{sellerId}/catalog/{catalogId}/products/{productId}`
+---
 
-Actualiza parcialmente un producto existente.
+#### `PATCH /api/products/:productId`
 
-#####  Body esperado
+Actualiza parcialmente un producto específico.
 
+##### Parámetros de URL
+| Parámetro | Tipo    | Obligatorio | Descripción |
+|:----------|:--------|:------------|:------------|
+| productId | integer | Sí          | ID del producto |
+
+##### Body esperado
 ```json
 {
-  "precio": 4500,
-  "cantidad_stock": 45,
-  "imagenes": ["https://ejemplo.com/nueva-imagen1.jpg"]
+  "precio": 4100,
+  "cantidad_stock": 25,
+  "imagenes": [
+    "https://example.com/img/pizza-napolitana-nueva.jpg"
+  ]
 }
 ```
 
 ##### 📄 Ejemplo de respuesta
-
 ```json
 {
   "message": "Producto actualizado exitosamente",
   "producto": {
-    "producto_id": "1",
+    "producto_id": "2",
     "nombre_producto": "Pizza Especial",
     "descripcion": "Pizza con jamón, morrón, huevo y aceitunas",
-    "precio": 4500,
-    "cantidad_stock": 45,
+    "precio": 4100,
+    "cantidad_stock": 25,
     "categoria": "Pizzas",
-    "imagenes": ["https://ejemplo.com/nueva-imagen1.jpg"],
+    "imagenes": [
+      "https://example.com/img/pizza-napolitana-nueva.jpg"
+    ],
     "promociones": []
   }
 }
 ```
 
-#### `DELETE /api/sellers/{sellerId}/catalog/{catalogId}/products/{productId}`
+---
+
+#### `DELETE /api/products/:productId`
 
 Elimina un producto específico.
 
-##### 📄 Ejemplo de respuesta
+##### Parámetros de URL
+| Parámetro | Tipo    | Obligatorio | Descripción |
+|:----------|:--------|:------------|:------------|
+| productId | integer | Sí          | ID del producto |
 
+##### 📄 Ejemplo de respuesta
 ```json
 {
   "message": "Producto eliminado exitosamente",
   "deleted_product": {
     "seller_id": "1",
     "catalogo_id": "1",
-    "producto_id": "1",
+    "producto_id": "2",
     "nombre_producto": "Pizza Especial"
   }
 }
