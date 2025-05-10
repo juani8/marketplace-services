@@ -177,7 +177,7 @@ Todos los servicios se comunican entre sí utilizando HTTPS y conexiones seguras
 
 Obtiene una lista paginada de todos los tenants registrados.
 
-##### 👅 Query Parameters
+#####  Query Parameters
 
 | Parámetro | Tipo    | Opcional | Descripción |
 |:-----------|:--------|:---------|:------------|
@@ -225,7 +225,7 @@ Crea un nuevo tenant.
 
 - La dirección se geocodifica automáticamente a lat/lon.
 
-##### 👅 Body esperado
+#####  Body esperado
 
 | Campo                     | Tipo     | Obligatorio | Descripción                                                  |
 |:---------------------------|:---------|:------------|:-------------------------------------------------------------|
@@ -295,7 +295,7 @@ Devuelve sellers cercanos según la ubicación del cliente.
 - Radio de entrega de 5 km.
 - Ordenado de **más cercano a más lejano**.
 
-##### 👅 Query Parameters
+#####  Query Parameters
 
 | Parámetro | Tipo    | Obligatorio | Descripción |
 |:-----------|:--------|:------------|:------------|
@@ -319,3 +319,217 @@ Devuelve sellers cercanos según la ubicación del cliente.
     "distance_km": 0.0595
   }
 ]
+
+
+### 🛂 **Sellers (Gestión de catálogos y productos)**
+
+#### `GET /api/sellers/{sellerId}/catalog`
+
+Obtiene todos los catálogos de un seller con sus productos.
+
+##### 📄 Ejemplo de respuesta
+
+```json
+[
+  {
+    "catalogo_id": "1",
+    "tenant_id": "1",
+    "productos": [
+      {
+        "producto_id": "1",
+        "nombre_producto": "Pizza Especial",
+        "descripcion": "Pizza con jamón, morrón, huevo y aceitunas",
+        "precio": 4300,
+        "cantidad_stock": 50,
+        "categoria": "Pizzas",
+        "imagenes": ["https://ejemplo.com/imagen1.jpg"],
+        "promociones": []
+      }
+    ],
+    "fecha_actualizacion": "2024-03-20T15:00:00.000Z"
+  }
+]
+```
+
+#### `GET /api/sellers/{sellerId}/catalog/{catalogId}`
+
+Obtiene un catálogo específico con todos sus productos.
+
+##### 📄 Ejemplo de respuesta
+
+```json
+{
+  "catalogo_id": "1",
+  "tenant_id": "1",
+  "productos": [
+    {
+      "producto_id": "1",
+      "nombre_producto": "Pizza Especial",
+      "descripcion": "Pizza con jamón, morrón, huevo y aceitunas",
+      "precio": 4300,
+      "cantidad_stock": 50,
+      "categoria": "Pizzas",
+      "imagenes": ["https://ejemplo.com/imagen1.jpg"],
+      "promociones": []
+    }
+  ],
+  "fecha_actualizacion": "2024-03-20T15:00:00.000Z"
+}
+```
+
+#### `POST /api/sellers/{sellerId}/catalog`
+
+Crea un nuevo catálogo para un seller.
+
+##### 📄 Ejemplo de respuesta
+
+```json
+{
+  "catalogo_id": "1",
+  "tenant_id": "1",
+  "productos": [],
+  "fecha_actualizacion": "2024-03-20T15:00:00.000Z"
+}
+```
+
+#### `DELETE /api/sellers/{sellerId}/catalog/{catalogId}`
+
+Elimina un catálogo específico y todos sus productos.
+
+##### 📄 Ejemplo de respuesta
+
+```json
+{
+  "message": "Catálogo ID 1 del seller ID 1 fue eliminado exitosamente",
+  "deleted_catalog": {
+    "catalogo_id": "1",
+    "tenant_id": "1"
+  }
+}
+```
+
+#### `GET /api/sellers/{sellerId}/catalog/{catalogId}/products`
+
+Obtiene todos los productos de un catálogo específico.
+
+##### 📄 Ejemplo de respuesta
+
+```json
+[
+  {
+    "producto_id": "1",
+    "nombre_producto": "Pizza Especial",
+    "descripcion": "Pizza con jamón, morrón, huevo y aceitunas",
+    "precio": 4300,
+    "cantidad_stock": 50,
+    "categoria": "Pizzas",
+    "imagenes": ["https://ejemplo.com/imagen1.jpg"],
+    "promociones": []
+  }
+]
+```
+
+#### `GET /api/sellers/{sellerId}/catalog/{catalogId}/products/{productId}`
+
+Obtiene un producto específico de un catálogo.
+
+##### 📄 Ejemplo de respuesta
+
+```json
+{
+  "producto_id": "1",
+  "nombre_producto": "Pizza Especial",
+  "descripcion": "Pizza con jamón, morrón, huevo y aceitunas",
+  "precio": 4300,
+  "cantidad_stock": 50,
+  "categoria": "Pizzas",
+  "imagenes": ["https://ejemplo.com/imagen1.jpg"],
+  "promociones": []
+}
+```
+
+#### `POST /api/sellers/{sellerId}/catalog/{catalogId}/products`
+
+Crea un nuevo producto en un catálogo.
+
+#####  Body esperado
+
+```json
+{
+  "nombre_producto": "Pizza Especial",
+  "descripcion": "Pizza con jamón, morrón, huevo y aceitunas",
+  "precio": 4300,
+  "cantidad_stock": 50,
+  "categoria": "Pizzas",
+  "imagenes": ["https://ejemplo.com/imagen1.jpg"]
+}
+```
+
+##### 📄 Ejemplo de respuesta
+
+```json
+{
+  "message": "Producto creado exitosamente",
+  "producto": {
+    "producto_id": "1",
+    "nombre_producto": "Pizza Especial",
+    "descripcion": "Pizza con jamón, morrón, huevo y aceitunas",
+    "precio": 4300,
+    "cantidad_stock": 50,
+    "categoria": "Pizzas",
+    "imagenes": ["https://ejemplo.com/imagen1.jpg"],
+    "promociones": []
+  }
+}
+```
+
+#### `PATCH /api/sellers/{sellerId}/catalog/{catalogId}/products/{productId}`
+
+Actualiza parcialmente un producto existente.
+
+#####  Body esperado
+
+```json
+{
+  "precio": 4500,
+  "cantidad_stock": 45,
+  "imagenes": ["https://ejemplo.com/nueva-imagen1.jpg"]
+}
+```
+
+##### 📄 Ejemplo de respuesta
+
+```json
+{
+  "message": "Producto actualizado exitosamente",
+  "producto": {
+    "producto_id": "1",
+    "nombre_producto": "Pizza Especial",
+    "descripcion": "Pizza con jamón, morrón, huevo y aceitunas",
+    "precio": 4500,
+    "cantidad_stock": 45,
+    "categoria": "Pizzas",
+    "imagenes": ["https://ejemplo.com/nueva-imagen1.jpg"],
+    "promociones": []
+  }
+}
+```
+
+#### `DELETE /api/sellers/{sellerId}/catalog/{catalogId}/products/{productId}`
+
+Elimina un producto específico.
+
+##### 📄 Ejemplo de respuesta
+
+```json
+{
+  "message": "Producto eliminado exitosamente",
+  "deleted_product": {
+    "seller_id": "1",
+    "catalogo_id": "1",
+    "producto_id": "1",
+    "nombre_producto": "Pizza Especial"
+  }
+}
+```
+```

@@ -1,4 +1,4 @@
-const pool = require('../config/db');
+const pool = require('../config/db_connection');
 
 const ProductoModel = {
   // Método para obtener todos los productos
@@ -20,66 +20,115 @@ const ProductoModel = {
   },
 
   // Método para crear un nuevo producto
-  async create(producto) {
-    const {
-      catalogo_id,
-      nombre_producto,
-      descripcion,
-      precio,
-      cantidad_stock,
-      categoria,
-      imagenes
-    } = producto;
+  async create(productoData) {
+    try {
+      const query = `
+        INSERT INTO productos (
+          catalogo_id, 
+          nombre_producto, 
+          descripcion, 
+          precio, 
+          cantidad_stock, 
+          categoria
+        ) 
+        VALUES ($1, $2, $3, $4, $5, $6) 
+        RETURNING *
+      `;
+      
+      const values = [
+        productoData.catalogo_id,
+        productoData.nombre_producto,
+        productoData.descripcion,
+        productoData.precio,
+        productoData.cantidad_stock,
+        productoData.categoria
+      ];
 
-    const res = await pool.query(
-      `INSERT INTO productos 
-        (catalogo_id, nombre_producto, descripcion, precio, cantidad_stock, categoria, imagenes)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)
-       RETURNING *`,
-      [
-        catalogo_id,
-        nombre_producto,
-        descripcion,
-        precio,
-        cantidad_stock,
-        categoria,
-        imagenes
-      ]
-    );
-
-    return res.rows[0];
+      const result = await pool.query(query, values);
+      return result.rows[0];
+    } catch (error) {
+      console.error('Error en create producto:', error);
+      throw error;
+    }
   },
 
   // Método para actualizar un producto
-  async update(id, updateData) {
-    const {
-      nombre_producto,
-      descripcion,
-      precio,
-      cantidad_stock,
-      categoria,
-      imagenes
-    } = updateData;
+  async update(productoId, updateData) {
+    try {
+      // Extraemos imagenes del updateData para no intentar actualizarlas en la tabla productos
+      const { imagenes, ...productoData } = updateData;
 
-    const res = await pool.query(
-      `UPDATE productos SET
-        nombre_producto = $1,
-        descripcion = $2,
-        precio = $3,
-        cantidad_stock = $4,
-        categoria = $5,
-        imagenes = $6
-       WHERE producto_id = $7
-       RETURNING *`,
-      [nombre_producto, descripcion, precio, cantidad_stock, categoria, imagenes, id]
-    );
+      // Construimos la query dinámicamente solo con los campos válidos
+      const validFields = ['nombre_producto', 'descripcion', 'precio', 'cantidad_stock', 'categoria'];
+      const updates = Object.keys(productoData)
+        .filter(key => validFields.includes(key) && productoData[key] !== undefined)
+        .map((key, index) => `${key} = $${index + 2}`);
 
-    return res.rows[0];
+      if (updates.length === 0) {
+        return await getById(productoId); // Si no hay campos para actualizar, retornamos el producto actual
+      }
+
+      const query = `
+        UPDATE productos 
+        SET ${updates.join(', ')} 
+        WHERE producto_id = $1 
+        RETURNING *
+      `;
+
+      const values = [productoId, ...Object.values(productoData)
+        .filter((_, index) => validFields.includes(Object.keys(productoData)[index]))];
+
+      const result = await pool.query(query, values);
+      return result.rows[0];
+    } catch (error) {
+      console.error('Error en update producto:', error);
+      throw error;
+    }
   },
 
   // Método para eliminar un producto
   async delete(id) {
     await pool.query('DELETE FROM productos WHERE producto_id = $1', [id]);
+  },
+
+  // Método para obtener imágenes de un producto
+  async getImagenes(producto_id) {
+    const res = await pool.query('SELECT url FROM imagenes_producto WHERE producto_id = $1', [producto_id]);
+    return res.rows.map(img => img.url);
+  },
+
+  // Método para obtener promociones de un producto
+  async getPromociones(producto_id) {
+    const res = await pool.query('SELECT * FROM promociones WHERE producto_id = $1', [producto_id]);
+    return res.rows;
+  },
+
+  // Método para agregar una nueva imagen a un producto
+  async addImagen(imagenData) {
+    try {
+      const query = `
+        INSERT INTO imagenes_producto (producto_id, url)
+        VALUES ($1, $2)
+        RETURNING *
+      `;
+      const values = [imagenData.producto_id, imagenData.url];
+      const result = await pool.query(query, values);
+      return result.rows[0];
+    } catch (error) {
+      console.error('Error agregando imagen:', error);
+      throw error;
+    }
+  },
+
+  // Agregar función para eliminar imágenes existentes
+  async deleteImagenes(productoId) {
+    try {
+      const query = 'DELETE FROM imagenes_producto WHERE producto_id = $1';
+      await pool.query(query, [productoId]);
+    } catch (error) {
+      console.error('Error eliminando imágenes:', error);
+      throw error;
+    }
   }
 };
 

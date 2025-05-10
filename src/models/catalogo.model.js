@@ -1,4 +1,4 @@
-const pool = require('../config/db');
+const pool = require('../config/db_connection');
 
 const CatalogoModel = {
   // Método para obtener todos los catálogos
@@ -36,6 +36,18 @@ const CatalogoModel = {
   // Método para borrar catálogos por tenant_id
   async deleteByTenantId(tenantId) {
     await pool.query('DELETE FROM catalogos WHERE tenant_id = $1', [tenantId]);
+  },
+
+  // Método para actualizar la fecha de actualización de un catálogo
+  async updateFechaActualizacion(catalogoId) {
+    try {
+      const query = 'UPDATE catalogos SET fecha_actualizacion = CURRENT_TIMESTAMP WHERE catalogo_id = $1 RETURNING *';
+      const result = await pool.query(query, [catalogoId]);
+      return result.rows[0];
+    } catch (error) {
+      console.error('Error actualizando fecha de catálogo:', error);
+      throw error;
+    }
   },
 };
 
