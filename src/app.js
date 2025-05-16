@@ -24,8 +24,8 @@ app.use(express.json());
 // Rutas
 app.use('/api/tenants', tenantRoutes);
 app.use('/api/sellers', sellerRoutes);
-app.use('/api', catalogRoutes);
-app.use('/api', productRoutes);
+app.use('/api/catalogs', catalogRoutes);
+app.use('/api/products', productRoutes);
 
 // Endpoint de test
 app.get('/status', async (req, res) => {

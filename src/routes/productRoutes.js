@@ -3,9 +3,8 @@ const router = express.Router();
 const productController = require('../controllers/productController');
 
 // Rutas para productos específicos
-router.get('/products/:productId', productController.getProductById);
-router.post('/catalogs/:catalogId/products', productController.createProduct);
-router.patch('/products/:productId', productController.updateProduct);
-router.delete('/products/:productId', productController.deleteProduct);
+router.get('/:productId', productController.getProductById);
+router.patch('/:productId', productController.updateProduct);
+router.delete('/:productId', productController.deleteProduct);
 
 module.exports = router;

@@ -3,19 +3,19 @@ const CatalogoModel = require('../models/catalogo.model');
 const ProductoModel = require('../models/producto.model');
 const { formatearProductos } = require('../utils/formatters');
 
-// Obtener todos los catálogos de un seller
-async function getSellerCatalogs(req, res) {
+// Obtener todos los catálogos de un tenant
+async function getAllCatalogs(req, res) {
   try {
-    const { sellerId } = req.params;
+     const tenantId = 1; // tenantId, se deberia obtener del JWT cuando esté implementado.
     
-    // Validamos que el seller exista
-    const seller = await TenantModel.getById(sellerId);
-    if (!seller) {
-      return res.status(404).json({ message: 'Seller no encontrado' });
+    // Validamos que el tenant exista
+    const tenant = await TenantModel.getById(tenantId);
+    if (!tenant) {
+      return res.status(404).json({ message: 'tenant no encontrado' });
     }
     
-    // Obtenemos los catálogos del seller
-    const catalogs = await CatalogoModel.getByTenantId(sellerId);
+    // Obtenemos los catálogos del tenant
+    const catalogs = await CatalogoModel.getByTenantId(tenantId);
     
     // Para cada catálogo, obtenemos sus productos
     const catalogsWithProducts = [];
@@ -35,7 +35,7 @@ async function getSellerCatalogs(req, res) {
     res.json(catalogsWithProducts);
     
   } catch (error) {
-    console.error('Error obteniendo catálogos del seller:', error);
+    console.error('Error obteniendo catálogos del tenant:', error);
     res.status(500).json({ message: 'Error interno del servidor' });
   }
 }
@@ -73,19 +73,19 @@ async function getCatalogById(req, res) {
   }
 }
 
-// Crear un nuevo catálogo para un seller
+// Crear un nuevo catálogo para un tenant
 async function createCatalog(req, res) {
   try {
-    const { sellerId } = req.params;
+    const tenantId = 1; // tenantId, se deberia obtener del JWT cuando esté implementado.
     
-    // Validamos que el seller exista
-    const seller = await TenantModel.getById(sellerId);
-    if (!seller) {
-      return res.status(404).json({ message: 'Seller no encontrado' });
+    // Validamos que el tenant exista
+    const tenant = await TenantModel.getById(tenantId);
+    if (!tenant) {
+      return res.status(404).json({ message: 'tenant no encontrado' });
     }
     
     // Creamos el catálogo
-    const newCatalog = await CatalogoModel.create({ tenant_id: parseInt(sellerId) });
+    const newCatalog = await CatalogoModel.create({ tenant_id: parseInt(tenantId) });
     
     res.status(201).json({
       catalogo_id: newCatalog.catalogo_id.toString(),
@@ -104,25 +104,26 @@ async function createCatalog(req, res) {
 async function deleteCatalog(req, res) {
   try {
     const { catalogId } = req.params;
-    
-    // Obtenemos el catálogo para tener información del tenant
+
+    const tenantId = 1; // ← hardcodeado por ahora, reemplazá por req.user.tenant_id luego
+
     const catalog = await CatalogoModel.getById(catalogId);
     if (!catalog) {
       return res.status(404).json({ message: 'Catálogo no encontrado' });
     }
+
+    if (catalog.tenant_id !== tenantId) {
+      return res.status(403).json({ message: 'No tenés permiso para eliminar este catálogo' });
+    }
     
-    // Guardamos el tenant_id para el mensaje de respuesta
-    const sellerId = catalog.tenant_id;
-    
-    // Eliminamos el catálogo
     await CatalogoModel.delete(catalogId);
     
     // En lugar de status 204, enviamos un 200 con mensaje de confirmación
     res.status(200).json({
-      message: `Catálogo ID ${catalogId} del seller ID ${sellerId} fue eliminado exitosamente`,
+      message: `Catálogo ID ${catalogId} del tenant ID ${tenantId} fue eliminado exitosamente`,
       deleted_catalog: {
         catalogo_id: catalogId,
-        tenant_id: sellerId
+        tenant_id: tenantId
       }
     });
     
@@ -132,7 +133,7 @@ async function deleteCatalog(req, res) {
   }
 }
 
-// Obtener todos los productos de un catálogo
+// Obtener todos los productos de un catálogo NO SE USA
 async function getCatalogProducts(req, res) {
   try {
     const { catalogId } = req.params;
@@ -158,7 +159,8 @@ async function getCatalogProducts(req, res) {
 }
 
 module.exports = {
-  getSellerCatalogs,
+  getAllCatalogs
+,
   getCatalogById,
   createCatalog,
   deleteCatalog,
