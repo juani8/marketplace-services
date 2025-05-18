@@ -46,5 +46,13 @@ jobs:
       # 🧹 Revisión de seguridad con ESLint
       - name: 📏 Run ESLint Security Check
         run: |
-          npm install --save-dev eslint eslint-plugin-security
+          npm install --save-dev eslint@8 eslint-plugin-security
+          echo '{
+            "env": {
+              "node": true,
+              "es2021": true
+            },
+            "extends": ["eslint:recommended", "plugin:security/recommended"],
+            "plugins": ["security"]
+          }' > .eslintrc.json
           npx eslint . --ext .js,.ts
