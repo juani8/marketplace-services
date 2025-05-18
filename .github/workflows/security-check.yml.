@@ -1,0 +1,55 @@
+name: 🔐 Full Security Check
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron:  '30 5,17 * * *'
+  workflow_dispatch:
+
+jobs:
+  security-check:
+    name: 🔍 Code & Dependency Security Scan
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+      actions: read
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v2
+        with:
+          languages: javascript
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v2
+
+      - name: Run npm audit
+        run: npm audit --audit-level=moderate
+
+      - name: Run ESLint
+        run: |
+          npm install eslint eslint-plugin-security --save-dev
+          npx eslint . --ext .js,.ts
+
+      - name: Snyk test
+        uses: snyk/actions/node@master
+        if: ${{ secrets.SNYK_TOKEN != '' }}
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          args: test --severity-threshold=medium
