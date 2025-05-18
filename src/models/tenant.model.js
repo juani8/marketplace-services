@@ -12,7 +12,6 @@ const TenantModel = {
         dc.email,
         dc.telefono,
         dc.movil,
-        dc.direccion AS direccion_contacto,
         dc.sitio_web,
         dc.linkedin
       FROM tenants t
@@ -39,17 +38,48 @@ const TenantModel = {
 
   // Método para crear un nuevo tenant
   async create(tenantData) {
-    const { nombre, razon_social, cuenta_bancaria, direccion, lat, lon, configuracion_operativa, estado } = tenantData;
-  
-    const res = await pool.query(
-      `INSERT INTO tenants 
-        (nombre, razon_social, cuenta_bancaria, direccion, lat, lon, configuracion_operativa, estado)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-       RETURNING *`,
-      [nombre, razon_social, cuenta_bancaria, direccion, lat, lon, configuracion_operativa, estado]
-    );
-  
-    return res.rows[0];
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+
+      // Intentar obtener el máximo tenant_id actual
+      const maxIdResult = await client.query('SELECT MAX(tenant_id) FROM tenants');
+      const nextId = (maxIdResult.rows[0].max || 0) + 1;
+
+      // Asegurar que la secuencia esté adelante del valor máximo
+      await client.query(`SELECT setval('tenants_tenant_id_seq', $1, true)`, [nextId]);
+
+      const { 
+        nombre, 
+        razon_social, 
+        cuenta_bancaria, 
+        calle,
+        numero,
+        ciudad,
+        provincia,
+        codigo_postal,
+        lat, 
+        lon, 
+        configuracion_operativa, 
+        estado 
+      } = tenantData;
+    
+      const res = await client.query(
+        `INSERT INTO tenants 
+          (nombre, razon_social, cuenta_bancaria, calle, numero, ciudad, provincia, codigo_postal, lat, lon, configuracion_operativa, estado)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+         RETURNING *`,
+        [nombre, razon_social, cuenta_bancaria, calle, numero, ciudad, provincia, codigo_postal, lat, lon, configuracion_operativa, estado]
+      );
+
+      await client.query('COMMIT');
+      return res.rows[0];
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
   },
 
   // Método para actualizar un tenant
@@ -90,14 +120,17 @@ const TenantModel = {
     return res.rows[0];
   },
 
-
   async findNearbySellers(lat, lon, deliveryRadiusKm) {
     const res = await pool.query(
       `SELECT 
         tenant_id,
         nombre,
         razon_social,
-        direccion,
+        calle,
+        numero,
+        ciudad,
+        provincia,
+        codigo_postal,
         lat,
         lon,
         configuracion_operativa,
@@ -121,9 +154,7 @@ const TenantModel = {
     );
   
     return res.rows;
-    },
+  },
 };
-
-
 
 module.exports = TenantModel;

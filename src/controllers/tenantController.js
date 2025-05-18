@@ -35,27 +35,51 @@ async function getAllTenants(req, res) {
 
 async function createTenant(req, res) {
   try {
-    const { nombre, razon_social, cuenta_bancaria, direccion, configuracion_operativa } = req.body;
+    const { 
+      nombre, 
+      razon_social, 
+      cuenta_bancaria, 
+      calle,
+      numero,
+      ciudad,
+      provincia,
+      codigo_postal,
+      configuracion_operativa 
+    } = req.body;
 
-    if (!nombre || !razon_social || !direccion) {
-      return res.status(400).json({ message: 'Nombre, razón social y dirección son obligatorios.' });
+    if (!nombre || !razon_social || !calle || !numero || !ciudad || !provincia) {
+      return res.status(400).json({ 
+        message: 'Nombre, razón social y dirección completa (calle, numero, ciudad, provincia) son obligatorios.' 
+      });
     }
 
     // Geocodificamos la dirección
     let lat, lon;
     try {
-      const location = await geocodeAddress(direccion);
+      const location = await geocodeAddress({
+        calle,
+        numero,
+        ciudad,
+        provincia,
+        codigo_postal
+      });
       lat = location.lat;
       lon = location.lon;
     } catch (geoError) {
-      return res.status(400).json({ message: 'Dirección inválida o no encontrada. Por favor verifica la dirección ingresada.' });
+      return res.status(400).json({ 
+        message: 'Dirección inválida o no encontrada. Por favor verifica los datos ingresados.' 
+      });
     }
 
     const newTenant = await TenantModel.create({
       nombre,
       razon_social,
       cuenta_bancaria,
-      direccion,
+      calle,
+      numero,
+      ciudad,
+      provincia,
+      codigo_postal,
       lat,
       lon,
       configuracion_operativa,
@@ -91,11 +115,22 @@ async function patchTenant(req, res) {
       return res.status(404).json({ message: 'Tenant no encontrado.' });
     }
 
-    // Si mandaron nueva dirección, geocodificarla
-    if (updateFields.direccion) {
-      const { lat, lon } = await geocodeAddress(updateFields.direccion);
-      updateFields.lat = lat;
-      updateFields.lon = lon;
+    // Si se actualiza algún campo de dirección, necesitamos todos los campos para geocodificar
+    if (updateFields.calle || updateFields.numero || updateFields.ciudad || updateFields.provincia || updateFields.codigo_postal) {
+      const direccion = {
+        calle: updateFields.calle || existingTenant.calle,
+        numero: updateFields.numero || existingTenant.numero,
+        ciudad: updateFields.ciudad || existingTenant.ciudad,
+        provincia: updateFields.provincia || existingTenant.provincia,
+        codigo_postal: updateFields.codigo_postal || existingTenant.codigo_postal
+      };
+
+      const { lat, lon } = await geocodeAddress(direccion);
+      updateFields = {
+        ...updateFields,
+        lat,
+        lon
+      };
     }
 
     // Actualizar el tenant solo con los campos enviados

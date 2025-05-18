@@ -31,6 +31,6 @@ router.post('/', catalogController.createCatalog);
 // DELETE /api/tenants/:tenantId
 router.delete('/:catalogId', catalogController.deleteCatalog);
 
-router.post('/:catalogId/products', productController.createProduct);
+router.post('/:catalogId/products', productController.createProduct.upload, productController.createProduct);
 
 module.exports = router;

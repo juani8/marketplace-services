@@ -1,16 +1,20 @@
 -- Tabla: tenants (1:N con catalogos, 1:1 con datos_contacto)
-CREATE TABLE IF NOT EXISTS tenants (
+CREATE TABLE tenants (
   tenant_id SERIAL PRIMARY KEY,
-  nombre            VARCHAR(100) NOT NULL,
-  razon_social      VARCHAR(150),
-  cuenta_bancaria   VARCHAR(100),
-  direccion         VARCHAR(200),
-  lon               NUMERIC(9,6), 
-  lat               NUMERIC(9,6),
+  nombre VARCHAR(100) NOT NULL,
+  razon_social VARCHAR(150),
+  cuenta_bancaria VARCHAR(100),
+  calle VARCHAR(100),
+  numero VARCHAR(20),
+  ciudad VARCHAR(100),
+  provincia VARCHAR(100),
+  codigo_postal VARCHAR(10),
+  lon NUMERIC(9,6),
+  lat NUMERIC(9,6),
   configuracion_operativa JSONB,
-  estado            VARCHAR(20)  DEFAULT 'activo' CHECK (estado IN ('activo','inactivo')),
-  fecha_registro    TIMESTAMP     DEFAULT CURRENT_TIMESTAMP,
-  fecha_actualizacion TIMESTAMP   DEFAULT CURRENT_TIMESTAMP
+  estado VARCHAR(20) DEFAULT 'activo' CHECK (estado IN ('activo','inactivo')),
+  fecha_registro TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  fecha_actualizacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Tabla: catalogos (N:1 con tenants, 1:N con productos)

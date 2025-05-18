@@ -10,13 +10,15 @@ Este proyecto es un backend desarrollado con **Node.js** y **Express**, utilizan
 "scripts": {
   "dev": "nodemon src/app.js",
   "start": "node src/app.js",
-  "init-db": "node src/config/db_init_model.js"
+  "init-db": "node src/config/db_init_model.js",
+  "drop-db": "node src/config/db_exec_drop_tables.js"
 }
 ```
 
 - `npm run dev`: Levanta el servidor en modo desarrollo con **nodemon**.
 - `npm start`: Ejecuta el servidor en producción.
-- `npm run init-db`: Inicializa las tablas en la base de datos (⚠️ ¡No correr, la base de datos ya fue creada!).
+- `npm run init-db`: Inicializa las tablas en la base de datos.
+- `npm run drop-db`: Elimina todas las tablas de la base de datos.
 
 ---
 
@@ -29,11 +31,28 @@ Este proyecto requiere las siguientes dependencias:
 - `morgan`: Middleware de logging.
 - `pg`: Cliente de PostgreSQL para Node.js.
 - `nodemon`: Recarga automática del servidor durante el desarrollo.
-- `node-fetch`: (Usado para geolocalización)
+- `multer`: Manejo de subida de archivos.
+- `cloudinary`: Servicio de almacenamiento de imágenes en la nube.
 
 Instalarlas mediante el siguiente comando:
 ```bash
 npm install
+```
+
+---
+
+## 🔐 Variables de Entorno
+
+El proyecto requiere las siguientes variables de entorno en un archivo `.env`:
+
+```bash
+# Base de datos
+DATABASE_URL=postgres://user:password@host:port/database
+
+# Cloudinary
+CLOUDINARY_CLOUD_NAME=your_cloud_name
+CLOUDINARY_API_KEY=your_api_key
+CLOUDINARY_API_SECRET=your_api_secret
 ```
 
 ---
@@ -44,13 +63,17 @@ npm install
 src/
 │
 ├── config/           # Configuración general (base de datos, variables de entorno)
+│   ├── db_connection.js
+│   ├── db_model.sql
+│   ├── db_init_model.js
+│   ├── db_exec_drop_tables.js
+│   └── multerConfig.js      # Configuración de multer para subida de imágenes
 │
 ├── controllers/      # Controladores con la lógica de negocio
-│   ├── tenant.controller.js
-│   ├── catalogo.controller.js
-│   ├── producto.controller.js
-│   ├── promocion.controller.js
-│   └── seller.controller.js
+│   ├── tenantController.js
+│   ├── catalogController.js
+│   ├── productController.js
+│   └── sellerController.js
 │
 ├── middlewares/      # Middlewares personalizados (próximamente)
 │
@@ -58,14 +81,21 @@ src/
 │   ├── tenant.model.js
 │   ├── catalogo.model.js
 │   ├── producto.model.js
-│   ├── promocion.model.js
+│   └── promocion.model.js
 │
 ├── routes/           # Rutas HTTP
-│   ├── tenant.routes.js
-│   ├── catalogo.routes.js
-│   ├── producto.routes.js
-│   ├── promocion.routes.js
-│   └── seller.routes.js
+│   ├── tenantRoutes.js
+│   ├── catalogRoutes.js
+│   ├── productRoutes.js
+│   └── sellerRoutes.js
+│
+├── services/         # Servicios externos y utilidades
+│   ├── geocodingService.js
+│   ├── publisherService.js
+│   └── imageUploadService.js  # Servicio de subida de imágenes a Cloudinary
+│
+├── utils/           # Utilidades y helpers
+│   └── formatters.js
 │
 └── app.js             # Configuración, uso de middlewares y punto de entrada del servidor
 ```
@@ -98,7 +128,11 @@ A continuación se detalla el modelo relacional utilizado en la base de datos Po
 | nombre                    | varchar(100)                 | NO       |
 | razon_social              | varchar(150)                 | SÍ       |
 | cuenta_bancaria           | varchar(100)                 | SÍ       |
-| direccion                 | varchar(200)                 | SÍ       |
+| calle                     | varchar(100)                 | SÍ       |
+| numero                    | varchar(20)                  | SÍ       |
+| ciudad                    | varchar(100)                 | SÍ       |
+| provincia                 | varchar(100)                 | SÍ       |
+| codigo_postal             | varchar(10)                  | SÍ       |
 | lon                       | numeric(9,6)                 | SÍ       |
 | lat                       | numeric(9,6)                 | SÍ       |
 | configuracion_operativa   | jsonb                        | SÍ       |
@@ -155,6 +189,18 @@ A continuación se detalla el modelo relacional utilizado en la base de datos Po
 |---------------|----------|----------|
 | promocion_id  | integer  | NO       |
 | producto_id   | integer  | NO       |
+
+---
+
+### 📸 Imágenes de Producto
+
+| Columna         | Tipo                         | Nullable |
+|-----------------|------------------------------|----------|
+| imagen_id       | integer (PK)                 | NO       |
+| producto_id     | integer (FK)                 | NO       |
+| url             | varchar(255)                 | NO       |
+| descripcion     | varchar(255)                 | SÍ       |
+| fecha_creacion  | timestamp                    | NO       |
 
 ---
 
@@ -319,6 +365,7 @@ Devuelve sellers cercanos según la ubicación del cliente.
     "distance_km": 0.0595
   }
 ]
+```
 
 ### 📦 **Catálogos**
 
@@ -346,7 +393,7 @@ Obtiene todos los catálogos de un seller específico.
         "cantidad_stock": 20,
         "categoria": "Pizzas",
         "imagenes": [
-          "https://example.com/img/margherita.jpg"
+          "https://res.cloudinary.com/your-cloud/image/upload/v1234/marketplace/pizza-margherita.jpg"
         ],
         "promociones": [
           {
@@ -355,15 +402,15 @@ Obtiene todos los catálogos de un seller específico.
             "nombre": "2x1 en Pizzas",
             "descripcion": "Llevá 2 pizzas al precio de 1",
             "tipo_promocion": "2x1",
-            "fecha_inicio": "2025-05-10T17:57:02.710Z",
-            "fecha_fin": "2025-05-10T17:57:02.710Z",
+            "fecha_inicio": "2024-03-27T15:00:00.000Z",
+            "fecha_fin": "2024-04-27T15:00:00.000Z",
             "productos_incluidos": ["1"],
             "estado": "activa"
           }
         ]
       }
     ],
-    "fecha_actualizacion": "2025-05-10T17:57:02.710Z"
+    "fecha_actualizacion": "2024-03-27T15:00:00.000Z"
   }
 ]
 ```
@@ -385,7 +432,7 @@ Obtiene un catálogo específico por su ID.
   "catalogo_id": "1",
   "tenant_id": "1",
   "productos": [],
-  "fecha_actualizacion": "2025-05-10T17:57:02.710Z"
+  "fecha_actualizacion": "2024-03-27T15:00:00.000Z"
 }
 ```
 
@@ -406,7 +453,7 @@ Crea un nuevo catálogo para un seller.
   "catalogo_id": "1",
   "tenant_id": "1",
   "productos": [],
-  "fecha_actualizacion": "2025-05-10T17:57:02.710Z"
+  "fecha_actualizacion": "2024-03-27T15:00:00.000Z"
 }
 ```
 
@@ -454,7 +501,7 @@ Obtiene todos los productos de un catálogo específico.
     "cantidad_stock": 20,
     "categoria": "Pizzas",
     "imagenes": [
-      "https://example.com/img/margherita.jpg"
+      "https://res.cloudinary.com/your-cloud/image/upload/v1234/marketplace/pizza-margherita.jpg"
     ],
     "promociones": []
   }
@@ -484,7 +531,7 @@ Obtiene un producto específico por su ID.
   "cantidad_stock": 20,
   "categoria": "Pizzas",
   "imagenes": [
-    "https://example.com/img/margherita.jpg"
+    "https://res.cloudinary.com/your-cloud/image/upload/v1234/marketplace/pizza-margherita.jpg"
   ],
   "promociones": []
 }
@@ -501,20 +548,17 @@ Crea un nuevo producto en un catálogo específico.
 |:----------|:--------|:------------|:------------|
 | catalogId | integer | Sí          | ID del catálogo |
 
-##### Body esperado
-```json
-{
-  "nombre_producto": "Pizza Especial",
-  "descripcion": "Pizza con jamón, morrón, huevo y aceitunas",
-  "precio": 4300,
-  "cantidad_stock": 50,
-  "categoria": "Pizzas",
-  "imagenes": [
-    "https://example.com/img/pizza-especial-1.jpg",
-    "https://example.com/img/pizza-especial-2.jpg"
-  ]
-}
-```
+##### Multipart Form Data
+| Campo           | Tipo           | Obligatorio | Descripción |
+|:----------------|:---------------|:------------|:------------|
+| nombre_producto | string         | Sí          | Nombre del producto |
+| descripcion     | string         | No          | Descripción del producto |
+| precio          | number         | Sí          | Precio del producto |
+| cantidad_stock  | number         | No          | Cantidad en stock |
+| categoria       | string         | No          | Categoría del producto |
+| imagenes        | file (máx. 5)  | No          | Archivos de imagen (máx. 5MB c/u) |
+
+
 
 ##### 📄 Ejemplo de respuesta
 ```json
@@ -528,8 +572,8 @@ Crea un nuevo producto en un catálogo específico.
     "cantidad_stock": 50,
     "categoria": "Pizzas",
     "imagenes": [
-      "https://example.com/img/pizza-especial-1.jpg",
-      "https://example.com/img/pizza-especial-2.jpg"
+      "https://res.cloudinary.com/your-cloud/image/upload/v1234/marketplace/image1.jpg",
+      "https://res.cloudinary.com/your-cloud/image/upload/v1234/marketplace/image2.jpg"
     ],
     "promociones": []
   }
@@ -547,16 +591,17 @@ Actualiza parcialmente un producto específico.
 |:----------|:--------|:------------|:------------|
 | productId | integer | Sí          | ID del producto |
 
-##### Body esperado
-```json
-{
-  "precio": 4100,
-  "cantidad_stock": 25,
-  "imagenes": [
-    "https://example.com/img/pizza-napolitana-nueva.jpg"
-  ]
-}
-```
+##### Multipart Form Data
+| Campo           | Tipo           | Obligatorio | Descripción |
+|:----------------|:---------------|:------------|:------------|
+| nombre_producto | string         | No          | Nombre del producto |
+| descripcion     | string         | No          | Descripción del producto |
+| precio          | number         | No          | Precio del producto |
+| cantidad_stock  | number         | No          | Cantidad en stock |
+| categoria       | string         | No          | Categoría del producto |
+| imagenes        | file (máx. 5)  | No          | Archivos de imagen (máx. 5MB c/u) |
+
+
 
 ##### 📄 Ejemplo de respuesta
 ```json
@@ -570,12 +615,14 @@ Actualiza parcialmente un producto específico.
     "cantidad_stock": 25,
     "categoria": "Pizzas",
     "imagenes": [
-      "https://example.com/img/pizza-napolitana-nueva.jpg"
+      "https://res.cloudinary.com/your-cloud/image/upload/v1234/marketplace/new-image.jpg"
     ],
     "promociones": []
   }
 }
 ```
+
+> ⚠️ **Nota sobre las imágenes**: Al actualizar un producto con nuevas imágenes, las imágenes anteriores serán eliminadas y reemplazadas por las nuevas. Si no se envían nuevas imágenes, las existentes se mantendrán sin cambios.
 
 ---
 

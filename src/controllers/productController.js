@@ -2,6 +2,8 @@ const TenantModel = require('../models/tenant.model');
 const CatalogoModel = require('../models/catalogo.model');
 const ProductoModel = require('../models/producto.model');
 const { formatearProductos } = require('../utils/formatters');
+const ImageUploadService = require('../services/ImageUploadService');
+const upload = require('../config/multerConfig');
 
 // Obtener todos los productos de un catálogo
 async function getProducts(req, res) {
@@ -59,8 +61,7 @@ async function createProduct(req, res) {
       descripcion, 
       precio, 
       cantidad_stock, 
-      categoria,
-      imagenes // Array de URLs
+      categoria
     } = req.body;
 
     // Validamos que el catálogo exista
@@ -72,6 +73,12 @@ async function createProduct(req, res) {
     // Validar datos requeridos
     if (!nombre_producto || !precio) {
       return res.status(400).json({ message: 'Nombre y precio son requeridos' });
+    }
+
+    // Procesar las imágenes si existen
+    let imageUrls = [];
+    if (req.files && req.files.length > 0) {
+      imageUrls = await ImageUploadService.uploadMultipleImages(req.files);
     }
 
     // Crear el producto
@@ -86,9 +93,9 @@ async function createProduct(req, res) {
 
     const newProduct = await ProductoModel.create(productoData);
 
-    // Si hay imágenes, agregarlas a la tabla imagenes_producto
-    if (imagenes && Array.isArray(imagenes)) {
-      for (const url of imagenes) {
+    // Agregar las URLs de las imágenes a la base de datos
+    if (imageUrls.length > 0) {
+      for (const url of imageUrls) {
         await ProductoModel.addImagen({
           producto_id: newProduct.producto_id,
           url
@@ -128,17 +135,23 @@ async function updateProduct(req, res) {
     // Guardamos el catalog_id para actualizar la fecha después
     const catalogId = product.catalogo_id;
 
+    // Procesar las nuevas imágenes si existen
+    let imageUrls = [];
+    if (req.files && req.files.length > 0) {
+      imageUrls = await ImageUploadService.uploadMultipleImages(req.files);
+    }
+
     // Actualizar el producto (sin las imágenes)
     const { imagenes, ...productoData } = updateData;
     const updatedProduct = await ProductoModel.update(productId, productoData);
 
-    // Manejar las imágenes si se proporcionaron
-    if (imagenes && Array.isArray(imagenes)) {
+    // Manejar las imágenes
+    if (imageUrls.length > 0) {
       // Eliminar imágenes anteriores
       await ProductoModel.deleteImagenes(productId);
       
       // Agregar nuevas imágenes
-      for (const url of imagenes) {
+      for (const url of imageUrls) {
         await ProductoModel.addImagen({
           producto_id: productId,
           url
@@ -216,6 +229,10 @@ async function deleteProduct(req, res) {
     res.status(500).json({ message: 'Error interno del servidor' });
   }
 }
+
+// Middleware de multer para las rutas que manejan imágenes
+createProduct.upload = upload.array('imagenes', 5); // Máximo 5 imágenes
+updateProduct.upload = upload.array('imagenes', 5);
 
 module.exports = {
   getProducts,
