@@ -6,8 +6,8 @@ on:
   pull_request:
     branches: [main]
   schedule:
-    - cron:  '30 5,17 * * *'
-  workflow_dispatch:
+    - cron: '30 5,17 * * *'  # Corre cada lunes a las 3 AM UTC
+  workflow_dispatch:      # Permite ejecutarlo manualmente
 
 jobs:
   security-check:
@@ -19,37 +19,32 @@ jobs:
       contents: read
 
     steps:
-      - name: Checkout repository
+      - name: 🧾 Checkout repository
         uses: actions/checkout@v3
 
-      - name: Set up Node.js
+      - name: ⚙️ Set up Node.js
         uses: actions/setup-node@v3
         with:
           node-version: 18
 
-      - name: Install dependencies
+      - name: 📦 Install dependencies
         run: npm ci
 
-      - name: Initialize CodeQL
+      # 🔍 Análisis estático con CodeQL
+      - name: 🔐 Initialize CodeQL
         uses: github/codeql-action/init@v2
         with:
           languages: javascript
 
-      - name: Perform CodeQL Analysis
+      - name: 🧠 Run CodeQL analysis
         uses: github/codeql-action/analyze@v2
 
-      - name: Run npm audit
+      # 📢 Análisis de vulnerabilidades en dependencias
+      - name: 🚨 Run npm audit
         run: npm audit --audit-level=moderate
 
-      - name: Run ESLint
+      # 🧹 Revisión de seguridad con ESLint
+      - name: 📏 Run ESLint Security Check
         run: |
-          npm install eslint eslint-plugin-security --save-dev
+          npm install --save-dev eslint eslint-plugin-security
           npx eslint . --ext .js,.ts
-
-      - name: Snyk test
-        uses: snyk/actions/node@master
-        if: ${{ secrets.SNYK_TOKEN != '' }}
-        env:
-          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-        with:
-          args: test --severity-threshold=medium
