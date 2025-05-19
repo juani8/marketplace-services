@@ -2,7 +2,7 @@ const TenantModel = require('../models/tenant.model');
 const CatalogoModel = require('../models/catalogo.model');
 const ProductoModel = require('../models/producto.model');
 const { formatearProductos } = require('../utils/formatters');
-const ImageUploadService = require('../services/ImageUploadService');
+const ImageUploadService = require('../services/imageUploadService');
 const upload = require('../config/multerConfig');
 
 // Obtener todos los productos de un catálogo
