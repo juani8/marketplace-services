@@ -40,15 +40,6 @@ const TenantModel = {
   async create(tenantData) {
     const client = await pool.connect();
     try {
-      await client.query('BEGIN');
-
-      // Intentar obtener el máximo tenant_id actual
-      const maxIdResult = await client.query('SELECT MAX(tenant_id) FROM tenants');
-      const nextId = (maxIdResult.rows[0].max || 0) + 1;
-
-      // Asegurar que la secuencia esté adelante del valor máximo
-      await client.query(`SELECT setval('tenants_tenant_id_seq', $1, true)`, [nextId]);
-
       const { 
         nombre, 
         razon_social, 
@@ -72,13 +63,9 @@ const TenantModel = {
         [nombre, razon_social, cuenta_bancaria, calle, numero, ciudad, provincia, codigo_postal, lat, lon, configuracion_operativa, estado]
       );
 
-      await client.query('COMMIT');
       return res.rows[0];
     } catch (error) {
-      await client.query('ROLLBACK');
       throw error;
-    } finally {
-      client.release();
     }
   },
 
