@@ -10,5 +10,7 @@ const productController = require('../controllers/productController');
 router.get('/:productId', productController.getProductById);
 router.patch('/:productId', productController.updateProduct.upload, productController.updateProduct);
 router.delete('/:productId', productController.deleteProduct);
+router.get('/', productController.getProducts);
+router.post('/', productController.createProduct);
 
 module.exports = router;

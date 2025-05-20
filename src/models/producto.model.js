@@ -14,8 +14,8 @@ const ProductoModel = {
   },
 
   // Método para obtener productos por catalogo_id
-  async getByCatalogoId(catalogo_id) {
-    const res = await pool.query('SELECT * FROM productos WHERE catalogo_id = $1', [catalogo_id]);
+  async getProductsByTenantId(tenantId) {
+    const res = await pool.query('SELECT * FROM productos WHERE tenant_id = $1', [tenantId]);
     return res.rows;
   },
 
@@ -24,24 +24,24 @@ const ProductoModel = {
     try {
       const query = `
         INSERT INTO productos (
-          catalogo_id, 
+          tenant_id,
           nombre_producto, 
           descripcion, 
           precio, 
           cantidad_stock, 
-          categoria
+          categoria_id
         ) 
         VALUES ($1, $2, $3, $4, $5, $6) 
         RETURNING *
       `;
       
       const values = [
-        productoData.catalogo_id,
+        productoData.tenant_id,
         productoData.nombre_producto,
         productoData.descripcion,
         productoData.precio,
         productoData.cantidad_stock,
-        productoData.categoria
+        productoData.categoria_id
       ];
 
       const result = await pool.query(query, values);

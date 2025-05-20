@@ -5,19 +5,12 @@ const { formatearProductos } = require('../utils/formatters');
 const ImageUploadService = require('../services/imageUploadService');
 const upload = require('../config/multerConfig');
 
-// Obtener todos los productos de un catálogo
+// Obtener todos los productos de un tenant
 async function getProducts(req, res) {
   try {
-    const { catalogId } = req.params;
-    
-    // Validamos que el catálogo exista
-    const catalog = await CatalogoModel.getById(catalogId);
-    if (!catalog) {
-      return res.status(404).json({ message: 'Catálogo no encontrado' });
-    }
-    
+    const tenantId = 1; // tenantId, se deberia obtener del JWT cuando esté implementado.
     // Obtenemos los productos del catálogo
-    const productos = await ProductoModel.getByCatalogoId(catalogId);
+    const productos = await ProductoModel.getProductsByTenantId(tenantId);
     
     // Formateamos los productos
     const productosFormateados = await formatearProductos(productos);
@@ -55,20 +48,15 @@ async function getProductById(req, res) {
 // Crear un nuevo producto
 async function createProduct(req, res) {
   try {
-    const { catalogId } = req.params;
     const { 
       nombre_producto, 
       descripcion, 
       precio, 
       cantidad_stock, 
-      categoria
+      categoria_id
     } = req.body;
 
-    // Validamos que el catálogo exista
-    const catalog = await CatalogoModel.getById(catalogId);
-    if (!catalog) {
-      return res.status(404).json({ message: 'Catálogo no encontrado' });
-    }
+    const tenantId = 1; // tenantId, se deberia obtener del JWT cuando esté implementado.
 
     // Validar datos requeridos
     if (!nombre_producto || !precio) {
@@ -83,12 +71,12 @@ async function createProduct(req, res) {
 
     // Crear el producto
     const productoData = {
-      catalogo_id: parseInt(catalogId),
+      tenant_id: tenantId,
       nombre_producto,
       descripcion,
       precio,
       cantidad_stock,
-      categoria
+      categoria_id
     };
 
     const newProduct = await ProductoModel.create(productoData);
@@ -102,9 +90,6 @@ async function createProduct(req, res) {
         });
       }
     }
-
-    // Actualizar fecha del catálogo
-    await CatalogoModel.updateFechaActualizacion(catalogId);
 
     // Obtener el producto con toda su información
     const productos = await formatearProductos([newProduct]);
