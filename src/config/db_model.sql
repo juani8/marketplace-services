@@ -1,4 +1,4 @@
--- Tabla: tenants (1:N con catalogos, 1:1 con datos_contacto)
+-- Tabla: tenants (1:N con productos, 1:1 con datos_contacto)
 CREATE TABLE tenants (
   tenant_id SERIAL PRIMARY KEY,
   nombre VARCHAR(100) NOT NULL,
@@ -11,28 +11,23 @@ CREATE TABLE tenants (
   codigo_postal VARCHAR(10),
   lon NUMERIC(9,6),
   lat NUMERIC(9,6),
-  configuracion_operativa JSONB,
+  horario_apertura TIME,
+  horario_cierre TIME,
   estado VARCHAR(20) DEFAULT 'activo' CHECK (estado IN ('activo','inactivo')),
   fecha_registro TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   fecha_actualizacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Tabla: catalogos (N:1 con tenants, 1:N con productos)
-CREATE TABLE IF NOT EXISTS catalogos (
-  catalogo_id        SERIAL PRIMARY KEY,
-  tenant_id          INTEGER REFERENCES tenants(tenant_id) ON DELETE CASCADE,
-  fecha_actualizacion TIMESTAMP    DEFAULT CURRENT_TIMESTAMP
-);
 
 -- Tabla: productos (N:1 con catalogos, 1:N con imagenes_producto, 1:N con promociones)
 CREATE TABLE IF NOT EXISTS productos (
   producto_id     SERIAL PRIMARY KEY,
-  catalogo_id     INTEGER REFERENCES catalogos(catalogo_id) ON DELETE CASCADE,
+  tenant_id     INTEGER REFERENCES tenants(tenant_id) ON DELETE CASCADE,
+  categoria_id   INTEGER REFERENCES categorias(categoria_id) ON DELETE CASCADE,
   nombre_producto VARCHAR(100) NOT NULL,
   descripcion     VARCHAR(255),
   precio          NUMERIC(10,2),
   cantidad_stock  INTEGER,
-  categoria       VARCHAR(100),
   fecha_creacion  TIMESTAMP      DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -68,4 +63,11 @@ CREATE TABLE IF NOT EXISTS datos_contacto (
   sitio_web     VARCHAR(100),
   linkedin      VARCHAR(100),
   fecha_creacion TIMESTAMP    DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS categorias (
+  categoria_id SERIAL PRIMARY KEY,
+  nombre       VARCHAR(100) NOT NULL,
+  descripcion  VARCHAR(255),
+  fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
