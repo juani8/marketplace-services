@@ -51,16 +51,17 @@ const TenantModel = {
         codigo_postal,
         lat, 
         lon, 
-        configuracion_operativa, 
+        horario_apertura,
+        horario_cierre, 
         estado 
       } = tenantData;
     
       const res = await client.query(
         `INSERT INTO tenants 
-          (nombre, razon_social, cuenta_bancaria, calle, numero, ciudad, provincia, codigo_postal, lat, lon, configuracion_operativa, estado)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+          (nombre, razon_social, cuenta_bancaria, calle, numero, ciudad, provincia, codigo_postal, lat, lon, horario_apertura, horario_cierre, estado)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
          RETURNING *`,
-        [nombre, razon_social, cuenta_bancaria, calle, numero, ciudad, provincia, codigo_postal, lat, lon, configuracion_operativa, estado]
+        [nombre, razon_social, cuenta_bancaria, calle, numero, ciudad, provincia, codigo_postal, lat, lon, horario_apertura, horario_cierre, estado]
       );
 
       return res.rows[0];
@@ -120,7 +121,8 @@ const TenantModel = {
         codigo_postal,
         lat,
         lon,
-        configuracion_operativa,
+        horario_apertura,
+        horario_cierre,
         estado,
         fecha_registro,
         fecha_actualizacion,

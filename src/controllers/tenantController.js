@@ -44,7 +44,8 @@ async function createTenant(req, res) {
       ciudad,
       provincia,
       codigo_postal,
-      configuracion_operativa 
+      horario_apertura,
+      horario_cierre, 
     } = req.body;
 
     if (!nombre || !razon_social || !calle || !numero || !ciudad || !provincia) {
@@ -82,7 +83,8 @@ async function createTenant(req, res) {
       codigo_postal,
       lat,
       lon,
-      configuracion_operativa,
+      horario_apertura,
+      horario_cierre,
       estado: 'activo'
     });
 
