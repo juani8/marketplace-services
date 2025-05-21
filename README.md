@@ -122,85 +122,93 @@ A continuación se detalla el modelo relacional utilizado en la base de datos Po
 
 ### 🏢 Tenants
 
-| Columna                  | Tipo                         | Nullable |
-|---------------------------|------------------------------|----------|
-| tenant_id                 | integer (PK)                 | NO       |
-| nombre                    | varchar(100)                 | NO       |
-| razon_social              | varchar(150)                 | SÍ       |
-| cuenta_bancaria           | varchar(100)                 | SÍ       |
-| calle                     | varchar(100)                 | SÍ       |
-| numero                    | varchar(20)                  | SÍ       |
-| ciudad                    | varchar(100)                 | SÍ       |
-| provincia                 | varchar(100)                 | SÍ       |
-| codigo_postal             | varchar(10)                  | SÍ       |
-| lon                       | numeric(9,6)                 | SÍ       |
-| lat                       | numeric(9,6)                 | SÍ       |
-| configuracion_operativa   | jsonb                        | SÍ       |
-| estado                    | varchar(20)                  | SÍ       |
-| fecha_registro            | timestamp without time zone  | SÍ       |
-| fecha_actualizacion       | timestamp without time zone  | SÍ       |
+| Columna           | Tipo                         | Nullable | Descripción                                |
+|-------------------|------------------------------|----------|--------------------------------------------|
+| tenant_id         | SERIAL (PK)                  | NO       | Identificador único del tenant             |
+| nombre            | VARCHAR(100)                 | NO       | Nombre del comercio                        |
+| razon_social      | VARCHAR(150)                 | SÍ       | Razón social registrada                    |
+| cuenta_bancaria   | VARCHAR(100)                 | SÍ       | Cuenta bancaria asociada                   |
+| calle             | VARCHAR(100)                 | SÍ       | Calle de la dirección                      |
+| numero            | VARCHAR(20)                  | SÍ       | Número de la dirección                     |
+| ciudad            | VARCHAR(100)                 | SÍ       | Ciudad                                     |
+| provincia         | VARCHAR(100)                 | SÍ       | Provincia                                  |
+| codigo_postal     | VARCHAR(10)                  | SÍ       | Código postal                              |
+| lon               | NUMERIC(9,6)                 | SÍ       | Longitud geográfica                        |
+| lat               | NUMERIC(9,6)                 | SÍ       | Latitud geográfica                         |
+| horario_apertura  | TIME                         | SÍ       | Hora de apertura                           |
+| horario_cierre    | TIME                         | SÍ       | Hora de cierre                             |
+| estado            | VARCHAR(20)                 | NO       | Estado del tenant (`activo`, `inactivo`)   |
+| fecha_registro    | TIMESTAMP                   | NO       | Fecha de creación del registro             |
+| fecha_actualizacion | TIMESTAMP                 | NO       | Fecha de última actualización              |
 
 ---
 
-### 📦 Catálogos
+### 📦 Productos
 
-| Columna           | Tipo                         | Nullable |
-|-------------------|------------------------------|----------|
-| catalogo_id       | integer (PK)                 | NO       |
-| tenant_id         | integer                      | SÍ       |
-| fecha_actualizacion | timestamp without time zone | SÍ       |
-
----
-
-### 🛂 Productos
-
-| Columna         | Tipo                         | Nullable |
-|-----------------|------------------------------|----------|
-| producto_id     | integer (PK)                 | NO       |
-| catalogo_id     | integer                      | SÍ       |
-| nombre_producto | text                         | NO       |
-| descripcion     | text                         | SÍ       |
-| precio          | numeric                      | SÍ       |
-| cantidad_stock  | integer                      | SÍ       |
-| categoria       | text                         | SÍ       |
-| imagenes        | array                        | SÍ       |
-| fecha_creacion  | timestamp without time zone  | SÍ       |
-
----
-
-### 🏱️ Promociones
-
-| Columna         | Tipo                         | Nullable |
-|-----------------|------------------------------|----------|
-| promocion_id    | integer (PK)                 | NO       |
-| tenant_id       | integer                      | SÍ       |
-| nombre          | text                         | NO       |
-| descripcion     | text                         | SÍ       |
-| tipo_promocion  | text                         | SÍ       |
-| fecha_inicio    | timestamp without time zone | SÍ       |
-| fecha_fin       | timestamp without time zone | SÍ       |
-| estado          | text                         | SÍ       |
-
----
-
-### 🔗 Productos - Promociones
-
-| Columna       | Tipo     | Nullable |
-|---------------|----------|----------|
-| promocion_id  | integer  | NO       |
-| producto_id   | integer  | NO       |
+| Columna         | Tipo                         | Nullable | Descripción                              |
+|-----------------|------------------------------|----------|------------------------------------------|
+| producto_id     | SERIAL (PK)                  | NO       | Identificador único del producto         |
+| tenant_id       | INTEGER (FK)                 | NO       | Referencia al tenant                     |
+| categoria_id    | INTEGER (FK)                 | NO       | Referencia a la categoría                |
+| nombre_producto | VARCHAR(100)                 | NO       | Nombre del producto                      |
+| descripcion     | VARCHAR(255)                 | SÍ       | Descripción detallada                    |
+| precio          | NUMERIC(10,2)                | SÍ       | Precio del producto                      |
+| cantidad_stock  | INTEGER                      | SÍ       | Stock disponible                         |
+| fecha_creacion  | TIMESTAMP                    | NO       | Fecha de creación del producto           |
 
 ---
 
 ### 📸 Imágenes de Producto
 
-| Columna         | Tipo                         | Nullable |
-|-----------------|------------------------------|----------|
-| imagen_id       | integer (PK)                 | NO       |
-| producto_id     | integer (FK)                 | NO       |
-| url             | varchar(255)                 | NO       |
-| descripcion     | varchar(255)                 | SÍ       |
-| fecha_creacion  | timestamp                    | NO       |
+| Columna         | Tipo                         | Nullable | Descripción                              |
+|-----------------|------------------------------|----------|------------------------------------------|
+| imagen_id       | SERIAL (PK)                  | NO       | Identificador de la imagen               |
+| producto_id     | INTEGER (FK)                 | NO       | Referencia al producto                   |
+| url             | VARCHAR(255)                 | NO       | URL de la imagen                         |
+| descripcion     | VARCHAR(255)                 | SÍ       | Descripción de la imagen                 |
+| fecha_creacion  | TIMESTAMP                    | NO       | Fecha de creación del registro           |
+
+---
+
+### 🎁 Promociones
+
+| Columna         | Tipo                         | Nullable | Descripción                              |
+|-----------------|------------------------------|----------|------------------------------------------|
+| promocion_id    | SERIAL (PK)                  | NO       | Identificador de la promoción            |
+| producto_id     | INTEGER (FK)                 | NO       | Producto al que aplica la promoción      |
+| nombre          | VARCHAR(100)                 | NO       | Nombre de la promoción                   |
+| descripcion     | VARCHAR(255)                 | SÍ       | Detalles adicionales                     |
+| tipo_promocion  | VARCHAR(100)                 | SÍ       | Tipo (descuento, 2x1, etc.)              |
+| fecha_inicio    | TIMESTAMP                    | SÍ       | Inicio de la promoción                   |
+| fecha_fin       | TIMESTAMP                    | SÍ       | Fin de la promoción                      |
+| estado          | VARCHAR(50)                  | SÍ       | Estado (`activo`, `inactivo`)            |
+
+---
+
+### 📇 Datos de Contacto
+
+| Columna         | Tipo                         | Nullable | Descripción                              |
+|-----------------|------------------------------|----------|------------------------------------------|
+| contacto_id     | SERIAL (PK)                  | NO       | Identificador del contacto               |
+| tenant_id       | INTEGER (FK)                 | NO       | Relación 1:1 con el tenant               |
+| email           | VARCHAR(100)                 | SÍ       | Correo electrónico                       |
+| telefono        | VARCHAR(20)                  | SÍ       | Teléfono fijo                            |
+| movil           | VARCHAR(20)                  | SÍ       | Teléfono móvil                           |
+| direccion       | VARCHAR(200)                 | SÍ       | Dirección completa                       |
+| sitio_web       | VARCHAR(100)                 | SÍ       | Página web                               |
+| linkedin        | VARCHAR(100)                 | SÍ       | Enlace a perfil de LinkedIn              |
+| fecha_creacion  | TIMESTAMP                    | NO       | Fecha de registro                        |
+
+---
+
+### 🗂️ Categorías
+
+| Columna         | Tipo                         | Nullable | Descripción                              |
+|-----------------|------------------------------|----------|------------------------------------------|
+| categoria_id    | SERIAL (PK)                  | NO       | Identificador de la categoría            |
+| nombre          | VARCHAR(100)                 | NO       | Nombre de la categoría                   |
+| descripcion     | VARCHAR(255)                 | SÍ       | Descripción adicional                    |
+| fecha_creacion  | TIMESTAMP                    | NO       | Fecha de creación del registro           |
 
 ---
 
