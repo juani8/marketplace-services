@@ -19,6 +19,12 @@ CREATE TABLE tenants (
 );
 
 
+CREATE TABLE IF NOT EXISTS categorias (
+  categoria_id SERIAL PRIMARY KEY,
+  nombre       VARCHAR(100) NOT NULL,
+  descripcion  VARCHAR(255),
+  fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
 -- Tabla: productos (N:1 con catalogos, 1:N con imagenes_producto, 1:N con promociones)
 CREATE TABLE IF NOT EXISTS productos (
   producto_id     SERIAL PRIMARY KEY,
@@ -43,13 +49,11 @@ CREATE TABLE IF NOT EXISTS imagenes_producto (
 -- Tabla: promociones (N:1 con productos)
 CREATE TABLE IF NOT EXISTS promociones (
   promocion_id   SERIAL PRIMARY KEY,
-  producto_id    INTEGER REFERENCES productos(producto_id) ON DELETE CASCADE,
   nombre         VARCHAR(100) NOT NULL,
-  descripcion    VARCHAR(255),
-  tipo_promocion VARCHAR(100),
+  tipo_promocion VARCHAR(20) NOT NULL CHECK (tipo_promocion IN ('monto', 'porcentaje')),
+  valor_descuento NUMERIC(10, 2) NOT NULL,
   fecha_inicio   TIMESTAMP,
-  fecha_fin      TIMESTAMP,
-  estado         VARCHAR(50)  DEFAULT 'activo' CHECK (estado IN ('activo','inactivo'))
+  fecha_fin      TIMESTAMP
 );
 
 -- Tabla: datos_contacto (1:1 con tenants)
@@ -65,9 +69,8 @@ CREATE TABLE IF NOT EXISTS datos_contacto (
   fecha_creacion TIMESTAMP    DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE IF NOT EXISTS categorias (
-  categoria_id SERIAL PRIMARY KEY,
-  nombre       VARCHAR(100) NOT NULL,
-  descripcion  VARCHAR(255),
-  fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+CREATE TABLE IF NOT EXISTS promociones_productos (
+  promocion_id INTEGER REFERENCES promociones(promocion_id) ON DELETE CASCADE,
+  producto_id  INTEGER REFERENCES productos(producto_id) ON DELETE CASCADE,
+  PRIMARY KEY (promocion_id, producto_id)
 );
