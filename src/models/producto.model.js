@@ -99,7 +99,13 @@ const ProductoModel = {
 
   // Método para obtener promociones de un producto
   async getPromociones(producto_id) {
-    const res = await pool.query('SELECT * FROM promociones WHERE producto_id = $1', [producto_id]);
+    const query = `
+      SELECT p.*
+      FROM promociones p
+      INNER JOIN promociones_productos pp ON p.promocion_id = pp.promocion_id
+      WHERE pp.producto_id = $1
+    `;
+    const res = await pool.query(query, [producto_id]);
     return res.rows;
   },
 
