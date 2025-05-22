@@ -9,6 +9,7 @@ const tenantRoutes = require('./routes/tenantRoutes');
 const sellerRoutes = require('./routes/sellerRoutes');
 const categoriesRoutes = require('./routes/categoriesRoutes');
 const productRoutes = require('./routes/productRoutes');
+const promotionsRoutes = require('./routes/promotionsRoutes');
 
 const app = express();
 
@@ -26,6 +27,7 @@ app.use('/api/tenants', tenantRoutes);
 app.use('/api/sellers', sellerRoutes);
 app.use('/api/categories', categoriesRoutes);
 app.use('/api/products', productRoutes);
+app.use('/api/promotions', promotionsRoutes);
 
 // Endpoint de test
 app.get('/status', async (req, res) => {

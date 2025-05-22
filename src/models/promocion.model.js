@@ -1,42 +1,35 @@
 const pool = require('../config/db_connection');
 
 const PromocionModel = {
-  // Método para obtener todas las promociones
-  async getAll() {
-    const res = await pool.query('SELECT * FROM promociones');
-    return res.rows;
-  },
-
-  // Método para obtener una promoción por ID
-  async getById(id) {
-    const res = await pool.query('SELECT * FROM promociones WHERE promocion_id = $1', [id]);
-    return res.rows[0];
-  },
-
-  // Método para obtener promociones por tenant_id
-  async getByTenantId(tenant_id) {
-    const res = await pool.query('SELECT * FROM promociones WHERE tenant_id = $1', [tenant_id]);
+  // Método para obtener todas las promociones de un tenant específico
+  async getAll(tenant_id) {
+    const res = await pool.query(
+      `SELECT DISTINCT pr.* 
+       FROM promociones pr
+       JOIN promociones_productos pp ON pr.promocion_id = pp.promocion_id
+       JOIN productos p ON pp.producto_id = p.producto_id
+       WHERE p.tenant_id = $1`,
+      [tenant_id]
+    );
     return res.rows;
   },
 
   // Método para crear una nueva promoción
   async create(data) {
     const {
-      tenant_id,
       nombre,
-      descripcion,
       tipo_promocion,
+      valor_descuento,
       fecha_inicio,
-      fecha_fin,
-      estado
+      fecha_fin
     } = data;
 
     const res = await pool.query(
       `INSERT INTO promociones
-        (tenant_id, nombre, descripcion, tipo_promocion, fecha_inicio, fecha_fin, estado)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)
+        (nombre, tipo_promocion, valor_descuento, fecha_inicio, fecha_fin)
+       VALUES ($1, $2, $3, $4, $5)
        RETURNING *`,
-      [tenant_id, nombre, descripcion, tipo_promocion, fecha_inicio, fecha_fin, estado]
+      [nombre, tipo_promocion, valor_descuento, fecha_inicio, fecha_fin]
     );
 
     return res.rows[0];
@@ -44,28 +37,32 @@ const PromocionModel = {
 
   // Método para actualizar una promoción
   async update(id, data) {
-    const {
-      nombre,
-      descripcion,
-      tipo_promocion,
-      fecha_inicio,
-      fecha_fin,
-      estado
-    } = data;
+    // Filtrar solo los campos que se proporcionan
+    const validFields = ['nombre', 'tipo_promocion', 'valor_descuento', 'fecha_inicio', 'fecha_fin'];
+    const fieldsToUpdate = Object.keys(data).filter(key => validFields.includes(key) && data[key] !== undefined);
+    
+    if (fieldsToUpdate.length === 0) {
+      // Si no hay campos para actualizar, obtener la promoción actual
+      const res = await pool.query(
+        'SELECT * FROM promociones WHERE promocion_id = $1',
+        [id]
+      );
+      return res.rows[0];
+    }
 
-    const res = await pool.query(
-      `UPDATE promociones SET
-        nombre = $1,
-        descripcion = $2,
-        tipo_promocion = $3,
-        fecha_inicio = $4,
-        fecha_fin = $5,
-        estado = $6
-       WHERE promocion_id = $7
-       RETURNING *`,
-      [nombre, descripcion, tipo_promocion, fecha_inicio, fecha_fin, estado, id]
-    );
+    // Construir la consulta dinámicamente
+    const setClauses = fieldsToUpdate.map((field, index) => `${field} = $${index + 1}`);
+    const values = fieldsToUpdate.map(field => data[field]);
+    values.push(id); // Añadir el ID al final
 
+    const query = `
+      UPDATE promociones SET
+        ${setClauses.join(',\n        ')}
+      WHERE promocion_id = $${values.length}
+      RETURNING *
+    `;
+
+    const res = await pool.query(query, values);
     return res.rows[0];
   },
 
@@ -77,7 +74,7 @@ const PromocionModel = {
   // Método para agregar un producto a una promoción
   async agregarProducto(promocion_id, producto_id) {
     const res = await pool.query(
-      `INSERT INTO productos_promociones (promocion_id, producto_id)
+      `INSERT INTO promociones_productos (promocion_id, producto_id)
        VALUES ($1, $2)
        ON CONFLICT DO NOTHING
        RETURNING *`,
@@ -90,22 +87,35 @@ const PromocionModel = {
   // Método para quitar un producto de una promoción
   async quitarProducto(promocion_id, producto_id) {
     await pool.query(
-      `DELETE FROM productos_promociones
+      `DELETE FROM promociones_productos
        WHERE promocion_id = $1 AND producto_id = $2`,
       [promocion_id, producto_id]
     );
   },
 
   // Método para obtener productos de una promoción
-  async getProductosPorPromocion(promocion_id) {
+  async getProductosPorPromocion(promocion_id, tenant_id) {
     const res = await pool.query(
       `SELECT p.* FROM productos p
-       JOIN productos_promociones pp ON p.producto_id = pp.producto_id
-       WHERE pp.promocion_id = $1`,
-      [promocion_id]
+       JOIN promociones_productos pp ON p.producto_id = pp.producto_id
+       WHERE pp.promocion_id = $1 AND p.tenant_id = $2`,
+      [promocion_id, tenant_id]
     );
 
     return res.rows;
+  },
+
+  // Método para verificar si una promoción pertenece a un tenant
+  async verificarPromocionTenant(promocion_id, tenant_id) {
+    const res = await pool.query(
+      `SELECT COUNT(*) > 0 as belongs
+       FROM promociones pr
+       JOIN promociones_productos pp ON pr.promocion_id = pp.promocion_id
+       JOIN productos p ON pp.producto_id = p.producto_id
+       WHERE pr.promocion_id = $1 AND p.tenant_id = $2`,
+      [promocion_id, tenant_id]
+    );
+    return res.rows[0].belongs;
   }
 };
 
