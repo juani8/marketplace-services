@@ -73,6 +73,8 @@ src/
 │   ├── tenantController.js
 │   ├── catalogController.js
 │   ├── productController.js
+│   ├── promotionsController.js
+│   ├── categoriesController.js
 │   └── sellerController.js
 │
 ├── middlewares/      # Middlewares personalizados (próximamente)
@@ -81,12 +83,15 @@ src/
 │   ├── tenant.model.js
 │   ├── catalogo.model.js
 │   ├── producto.model.js
-│   └── promocion.model.js
+│   ├── promocion.model.js
+│   └── categoria.model.js
 │
 ├── routes/           # Rutas HTTP
 │   ├── tenantRoutes.js
 │   ├── catalogRoutes.js
 │   ├── productRoutes.js
+│   ├── promotionsRoutes.js
+│   ├── categoriesRoutes.js
 │   └── sellerRoutes.js
 │
 ├── services/         # Servicios externos y utilidades
@@ -173,17 +178,15 @@ A continuación se detalla el modelo relacional utilizado en la base de datos Po
 | Columna         | Tipo                         | Nullable |
 |-----------------|------------------------------|----------|
 | promocion_id    | integer (PK)                 | NO       |
-| tenant_id       | integer                      | SÍ       |
-| nombre          | text                         | NO       |
-| descripcion     | text                         | SÍ       |
-| tipo_promocion  | text                         | SÍ       |
-| fecha_inicio    | timestamp without time zone | SÍ       |
-| fecha_fin       | timestamp without time zone | SÍ       |
-| estado          | text                         | SÍ       |
+| nombre          | varchar(100)                 | NO       |
+| tipo_promocion  | varchar(20)                  | NO       |
+| valor_descuento | numeric(10,2)                | NO       |
+| fecha_inicio    | timestamp                    | NO       |
+| fecha_fin       | timestamp                    | NO       |
 
 ---
 
-### 🔗 Productos - Promociones
+### 🔗 Promociones - Productos
 
 | Columna       | Tipo     | Nullable |
 |---------------|----------|----------|
@@ -512,6 +515,32 @@ Obtiene todos los productos de un catálogo específico.
 
 ### 🛍️ **Productos**
 
+#### `GET /api/products`
+
+Obtiene todos los productos del tenant actual.
+
+##### 📄 Ejemplo de respuesta
+```json
+[
+  {
+    "producto_id": "1",
+    "nombre_producto": "Pizza Margherita",
+    "descripcion": "Pizza con salsa de tomate, mozzarella y albahaca",
+    "precio": 3500,
+    "cantidad_stock": 20,
+    "categoria": {
+      "categoria_id": "1",
+      "nombre": "Pizzas",
+      "descripcion": "Pizzas tradicionales"
+    },
+    "imagenes": [
+      "https://res.cloudinary.com/your-cloud/image/upload/v1234/marketplace/pizza-margherita.jpg"
+    ],
+    "promociones": []
+  }
+]
+```
+
 #### `GET /api/products/:productId`
 
 Obtiene un producto específico por su ID.
@@ -529,7 +558,11 @@ Obtiene un producto específico por su ID.
   "descripcion": "Pizza con salsa de tomate, mozzarella y albahaca",
   "precio": 3500,
   "cantidad_stock": 20,
-  "categoria": "Pizzas",
+  "categoria": {
+    "categoria_id": "1",
+    "nombre": "Pizzas",
+    "descripcion": "Pizzas tradicionales"
+  },
   "imagenes": [
     "https://res.cloudinary.com/your-cloud/image/upload/v1234/marketplace/pizza-margherita.jpg"
   ],
@@ -537,16 +570,9 @@ Obtiene un producto específico por su ID.
 }
 ```
 
----
+#### `POST /api/products`
 
-#### `POST /api/catalogs/:catalogId/products`
-
-Crea un nuevo producto en un catálogo específico.
-
-##### Parámetros de URL
-| Parámetro | Tipo    | Obligatorio | Descripción |
-|:----------|:--------|:------------|:------------|
-| catalogId | integer | Sí          | ID del catálogo |
+Crea un nuevo producto.
 
 ##### Multipart Form Data
 | Campo           | Tipo           | Obligatorio | Descripción |
@@ -555,10 +581,8 @@ Crea un nuevo producto en un catálogo específico.
 | descripcion     | string         | No          | Descripción del producto |
 | precio          | number         | Sí          | Precio del producto |
 | cantidad_stock  | number         | No          | Cantidad en stock |
-| categoria       | string         | No          | Categoría del producto |
+| categoria_id    | integer        | No          | ID de la categoría |
 | imagenes        | file (máx. 5)  | No          | Archivos de imagen (máx. 5MB c/u) |
-
-
 
 ##### 📄 Ejemplo de respuesta
 ```json
@@ -570,7 +594,11 @@ Crea un nuevo producto en un catálogo específico.
     "descripcion": "Pizza con jamón, morrón, huevo y aceitunas",
     "precio": 4300,
     "cantidad_stock": 50,
-    "categoria": "Pizzas",
+    "categoria": {
+      "categoria_id": "1",
+      "nombre": "Pizzas",
+      "descripcion": "Pizzas tradicionales"
+    },
     "imagenes": [
       "https://res.cloudinary.com/your-cloud/image/upload/v1234/marketplace/image1.jpg",
       "https://res.cloudinary.com/your-cloud/image/upload/v1234/marketplace/image2.jpg"
@@ -579,8 +607,6 @@ Crea un nuevo producto en un catálogo específico.
   }
 }
 ```
-
----
 
 #### `PATCH /api/products/:productId`
 
@@ -598,10 +624,8 @@ Actualiza parcialmente un producto específico.
 | descripcion     | string         | No          | Descripción del producto |
 | precio          | number         | No          | Precio del producto |
 | cantidad_stock  | number         | No          | Cantidad en stock |
-| categoria       | string         | No          | Categoría del producto |
+| categoria_id    | integer        | No          | ID de la categoría |
 | imagenes        | file (máx. 5)  | No          | Archivos de imagen (máx. 5MB c/u) |
-
-
 
 ##### 📄 Ejemplo de respuesta
 ```json
@@ -609,13 +633,17 @@ Actualiza parcialmente un producto específico.
   "message": "Producto actualizado exitosamente",
   "producto": {
     "producto_id": "2",
-    "nombre_producto": "Pizza Especial",
-    "descripcion": "Pizza con jamón, morrón, huevo y aceitunas",
-    "precio": 4100,
-    "cantidad_stock": 25,
-    "categoria": "Pizzas",
+    "nombre_producto": "Pizza Especial Actualizada",
+    "descripcion": "Pizza con jamón, morrón, huevo y aceitunas negras",
+    "precio": 4500,
+    "cantidad_stock": 45,
+    "categoria": {
+      "categoria_id": "1",
+      "nombre": "Pizzas",
+      "descripcion": "Pizzas tradicionales"
+    },
     "imagenes": [
-      "https://res.cloudinary.com/your-cloud/image/upload/v1234/marketplace/new-image.jpg"
+      "https://res.cloudinary.com/your-cloud/image/upload/v1234/marketplace/new-image1.jpg"
     ],
     "promociones": []
   }
@@ -640,11 +668,215 @@ Elimina un producto específico.
 {
   "message": "Producto eliminado exitosamente",
   "deleted_product": {
-    "seller_id": "1",
-    "catalogo_id": "1",
+    "tenant_id": "1",
     "producto_id": "2",
     "nombre_producto": "Pizza Especial"
   }
 }
 ```
+
+### 📑 **Categorías**
+
+#### `GET /api/categories`
+
+Obtiene todas las categorías disponibles.
+
+##### 📄 Ejemplo de respuesta
+```json
+[
+  {
+    "categoria_id": 1,
+    "nombre": "Pizzas",
+    "descripcion": "Pizzas tradicionales",
+    "fecha_creacion": "2024-03-27T15:00:00.000Z"
+  },
+  {
+    "categoria_id": 2,
+    "nombre": "Bebidas",
+    "descripcion": "Bebidas frías y calientes",
+    "fecha_creacion": "2024-03-27T15:00:00.000Z"
+  }
+]
+```
+
+#### `GET /api/categories/:categoriaId`
+
+Obtiene una categoría específica por su ID.
+
+##### Parámetros de URL
+| Parámetro   | Tipo    | Obligatorio | Descripción |
+|:------------|:--------|:------------|:------------|
+| categoriaId | integer | Sí          | ID de la categoría |
+
+##### 📄 Ejemplo de respuesta
+```json
+{
+  "categoria_id": 1,
+  "nombre": "Pizzas",
+  "descripcion": "Pizzas tradicionales",
+  "fecha_creacion": "2024-03-27T15:00:00.000Z"
+}
+```
+
+#### `POST /api/categories`
+
+Crea una nueva categoría.
+
+##### Body (JSON)
+| Campo      | Tipo   | Obligatorio | Descripción |
+|:-----------|:-------|:------------|:------------|
+| nombre     | string | Sí          | Nombre de la categoría |
+| descripcion| string | No          | Descripción de la categoría |
+
+##### 📄 Ejemplo de respuesta
+```json
+{
+  "categoria_id": 3,
+  "nombre": "Postres",
+  "descripcion": "Postres caseros",
+  "fecha_creacion": "2024-03-27T15:00:00.000Z"
+}
+```
+
+#### `DELETE /api/categories/:categoriaId`
+
+Elimina una categoría específica.
+
+##### Parámetros de URL
+| Parámetro   | Tipo    | Obligatorio | Descripción |
+|:------------|:--------|:------------|:------------|
+| categoriaId | integer | Sí          | ID de la categoría |
+
+##### 📄 Ejemplo de respuesta
+```json
+{
+  "message": "Categoría 3 eliminada correctamente"
+}
+```
+
+### 🎯 **Promociones**
+
+#### `GET /api/promotions`
+
+Obtiene todas las promociones del tenant ID que trae el JWT.
+
+##### 📄 Ejemplo de respuesta
+```json
+[
+  {
+    "promocion_id": 1,
+    "nombre": "2x1 en Hamburguesas",
+    "tipo_promocion": "porcentaje",
+    "valor_descuento": 50,
+    "fecha_inicio": "2024-03-20T00:00:00.000Z",
+    "fecha_fin": "2024-04-20T00:00:00.000Z",
+    "productos": [
+      {
+        "producto_id": 1,
+        "nombre_producto": "Hamburguesa Clásica",
+        "precio": 1500,
+        "descripcion": "Hamburguesa con queso y lechuga",
+        // ... otros campos del producto
+      }
+    ]
+  }
+]
+```
+
+---
+
+#### `POST /api/promotions`
+
+Crea una nueva promoción.
+
+##### Body esperado
+```json
+{
+  "nombre": "2x1 en Hamburguesas",
+  "tipo_promocion": "porcentaje",
+  "valor_descuento": 50,
+  "fecha_inicio": "2024-03-20",
+  "fecha_fin": "2024-04-20",
+  "lista_productos": [1, 2] // IDs de productos existentes del tenant
+}
+```
+
+##### 📄 Ejemplo de respuesta (201 Created)
+```json
+{
+  "message": "Promoción creada exitosamente",
+  "promocion": {
+    "promocion_id": 1,
+    "nombre": "2x1 en Hamburguesas",
+    "tipo_promocion": "porcentaje",
+    "valor_descuento": 50,
+    "fecha_inicio": "2024-03-20T00:00:00.000Z",
+    "fecha_fin": "2024-04-20T00:00:00.000Z",
+    "productos": [
+      {
+        "producto_id": 1,
+        "nombre_producto": "Hamburguesa Clásica",
+        // ... detalles del producto
+      }
+    ]
+  }
+}
+```
+
+---
+
+#### `PATCH /api/promotions/:promotionId`
+
+Actualiza parcialmente una promoción existente.
+
+##### Body esperado (campos opcionales)
+```json
+{
+  "nombre": "3x2 en Hamburguesas",
+  "tipo_promocion": "porcentaje",
+  "valor_descuento": 33.33,
+  "fecha_inicio": "2024-03-20",
+  "fecha_fin": "2024-04-20",
+  "lista_productos": [1, 2, 3]
+}
+```
+
+##### 📄 Ejemplo de respuesta
+```json
+{
+  "message": "Promoción actualizada exitosamente",
+  "promocion": {
+    "promocion_id": 1,
+    "nombre": "3x2 en Hamburguesas",
+    "tipo_promocion": "porcentaje",
+    "valor_descuento": 33.33,
+    "fecha_inicio": "2024-03-20T00:00:00.000Z",
+    "fecha_fin": "2024-04-20T00:00:00.000Z",
+    "productos": [
+      // Lista actualizada de productos
+    ]
+  }
+}
+```
+
+---
+
+#### `DELETE /api/promotions/:promotionId`
+
+Elimina una promoción específica.
+
+##### 📄 Ejemplo de respuesta
+```json
+{
+  "message": "Promoción eliminada exitosamente",
+  "deleted_promotion_id": "1"
+}
+```
+
+##### Notas importantes:
+- El campo `tipo_promocion` solo acepta "monto" o "porcentaje"
+- `valor_descuento` representa el porcentaje de descuento o el monto fijo según el tipo
+- `fecha_inicio` debe ser anterior a `fecha_fin`
+- Solo se pueden asociar productos que pertenezcan al mismo tenant
+- Las fechas deben enviarse en formato ISO (YYYY-MM-DD)
 ```

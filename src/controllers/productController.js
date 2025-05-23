@@ -117,9 +117,6 @@ async function updateProduct(req, res) {
       return res.status(404).json({ message: 'Producto no encontrado' });
     }
 
-    // Guardamos el catalog_id para actualizar la fecha después
-    const catalogId = product.catalogo_id;
-
     // Procesar las nuevas imágenes si existen
     let imageUrls = [];
     if (req.files && req.files.length > 0) {
@@ -143,9 +140,6 @@ async function updateProduct(req, res) {
         });
       }
     }
-
-    // Actualizar fecha del catálogo
-    await CatalogoModel.updateFechaActualizacion(catalogId);
 
     // Obtener el producto actualizado con toda su información
     const productos = await formatearProductos([updatedProduct]);
@@ -173,37 +167,17 @@ async function deleteProduct(req, res) {
     }
     
     // Guardamos la información necesaria para la respuesta
-    const catalogId = product.catalogo_id;
     const nombreProducto = product.nombre_producto;
-    
-    // Obtenemos info del catálogo para saber el seller_id
-    const catalog = await CatalogoModel.getById(catalogId);
-    if (!catalog) {
-      // Si por alguna razón el catálogo no existe, igual borramos el producto
-      await ProductoModel.delete(productId);
-      return res.status(200).json({
-        message: `Producto eliminado exitosamente`,
-        deleted_product: {
-          producto_id: productId,
-          nombre_producto: nombreProducto
-        }
-      });
-    }
-    
-    const sellerId = catalog.tenant_id;
+    const tenantId = product.tenant_id;
     
     // Eliminamos el producto
     await ProductoModel.delete(productId);
-    
-    // Actualizar fecha del catálogo
-    await CatalogoModel.updateFechaActualizacion(catalogId);
     
     // En lugar de status 204, enviamos un 200 con mensaje de confirmación
     res.status(200).json({
       message: `Producto eliminado exitosamente`,
       deleted_product: {
-        seller_id: sellerId,
-        catalogo_id: catalogId,
+        tenant_id: tenantId,
         producto_id: productId,
         nombre_producto: nombreProducto
       }

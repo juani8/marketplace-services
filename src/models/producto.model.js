@@ -59,13 +59,13 @@ const ProductoModel = {
       const { imagenes, ...productoData } = updateData;
 
       // Construimos la query dinámicamente solo con los campos válidos
-      const validFields = ['nombre_producto', 'descripcion', 'precio', 'cantidad_stock', 'categoria'];
+      const validFields = ['nombre_producto', 'descripcion', 'precio', 'cantidad_stock', 'categoria_id'];
       const updates = Object.keys(productoData)
         .filter(key => validFields.includes(key) && productoData[key] !== undefined)
         .map((key, index) => `${key} = $${index + 2}`);
 
       if (updates.length === 0) {
-        return await getById(productoId); // Si no hay campos para actualizar, retornamos el producto actual
+        return await this.getById(productoId); // Si no hay campos para actualizar, retornamos el producto actual
       }
 
       const query = `
