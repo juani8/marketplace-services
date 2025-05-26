@@ -20,8 +20,7 @@ jobs:
           port: 22
           source: "deploy-backend.sh"          # point at the actual file
           target: "~/"
-          rsync: true
-          timeout: 600
+          timeout: "600s"
 
       - name: Trigger backend deploy from Frontend
         uses: appleboy/ssh-action@v1
