@@ -1,33 +1,34 @@
-name: Deploy Backend via Bastion
+# .github/workflows/deploy-backend.yml
+name: Deploy Backend via Frontend Bastion
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
 
 jobs:
-  deploy:
+  deploy-backend:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v3
+      - uses: actions/checkout@v3
 
-      - name: Upload deploy script to frontend EC2
+      - name: Upload deploy‐backend.sh to Frontend EC2
         uses: appleboy/scp-action@v0.1.4
         with:
           host: ${{ secrets.FRONTEND_EC2_IP }}
           username: ubuntu
           key: ${{ secrets.FRONTEND_EC2_KEY }}
-          source: "./deploy-backend.sh"
+          port: 22
+          source: "deploy-backend.sh"          # point at the actual file
           target: "~/"
+          rsync: true
+          timeout: 600
 
-      - name: Run script to SSH into backend and deploy
-        uses: appleboy/ssh-action@v1.0.0
+      - name: Trigger backend deploy from Frontend
+        uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.FRONTEND_EC2_IP }}
           username: ubuntu
           key: ${{ secrets.FRONTEND_EC2_KEY }}
           script: |
             chmod +x ~/deploy-backend.sh
-            ./deploy-backend.sh
+            ~/deploy-backend.sh
