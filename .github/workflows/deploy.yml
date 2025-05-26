@@ -1,4 +1,4 @@
-name: Deploy to EC2
+name: Deploy Backend via Bastion
 
 on:
   push:
@@ -10,25 +10,24 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
+      - name: Checkout Code
         uses: actions/checkout@v3
 
-      - name: Copy files via SCP
+      - name: Upload deploy script to frontend EC2
         uses: appleboy/scp-action@v0.1.4
         with:
-          host: ${{ secrets.EC2_HOST }}
+          host: ${{ secrets.FRONTEND_EC2_IP }}
           username: ubuntu
-          key: ${{ secrets.EC2_SSH_KEY }}
-          source: "."
-          target: "~/app"
+          key: ${{ secrets.FRONTEND_EC2_KEY }}
+          source: "./deploy-backend.sh"
+          target: "~/"
 
-      - name: Run remote commands
+      - name: Run script to SSH into backend and deploy
         uses: appleboy/ssh-action@v1.0.0
         with:
-          host: ${{ secrets.EC2_HOST }}
+          host: ${{ secrets.FRONTEND_EC2_IP }}
           username: ubuntu
-          key: ${{ secrets.EC2_SSH_KEY }}
+          key: ${{ secrets.FRONTEND_EC2_KEY }}
           script: |
-            cd ~/app
-            docker-compose down || true
-            docker-compose up -d --build
+            chmod +x ~/deploy-backend.sh
+            ./deploy-backend.sh
