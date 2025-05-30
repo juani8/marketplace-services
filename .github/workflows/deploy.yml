@@ -1,4 +1,3 @@
-# .github/workflows/deploy-backend.yml
 name: Deploy Backend via Frontend Bastion
 
 on:
@@ -11,14 +10,14 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: Upload deploy‐backend.sh to Frontend EC2
+      - name: Upload deploy-backend.sh to Frontend EC2
         uses: appleboy/scp-action@v0.1.4
         with:
           host: ${{ secrets.FRONTEND_EC2_IP }}
           username: ubuntu
           key: ${{ secrets.FRONTEND_EC2_KEY }}
           port: 22
-          source: "deploy-backend.sh"          # point at the actual file
+          source: "deploy-backend.sh"
           target: "~/"
           timeout: "600s"
 
@@ -29,5 +28,11 @@ jobs:
           username: ubuntu
           key: ${{ secrets.FRONTEND_EC2_KEY }}
           script: |
+            export BACKEND_REPO_URL="${{ secrets.BACKEND_REPO_URL }}"
+            export RDS_ENDPOINT="${{ secrets.RDS_ENDPOINT }}"
+            export DB_NAME="${{ secrets.DB_NAME }}"
+            export DB_USERNAME="${{ secrets.DB_USERNAME }}"
+            export DB_PASSWORD="${{ secrets.DB_PASSWORD }}"
+            export LOCATIONIQ_API_KEY="${{ secrets.LOCATIONIQ_API_KEY }}"
             chmod +x ~/deploy-backend.sh
             ~/deploy-backend.sh
