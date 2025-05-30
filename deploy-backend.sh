@@ -20,13 +20,16 @@ if [ ! -d ".git" ]; then
 fi
 
 git config --global --add safe.directory "$BACKEND_DIR"
-git pull origin main
 
-cd src
+# Forzar a que el código quede igual que el remoto (evita ramas divergentes)
+git fetch origin main
+git reset --hard origin/main
 
 # Permisos correctos
 sudo chown -R ubuntu:ubuntu "$BACKEND_DIR"
 sudo chmod -R u+rwX "$BACKEND_DIR"
+
+cd src
 
 npm install
 
@@ -35,4 +38,5 @@ if ! command -v pm2 &> /dev/null; then
   sudo npm install -g pm2
 fi
 
+# Intenta reiniciar, si no existe lo crea
 pm2 restart all || pm2 start npm -- start
