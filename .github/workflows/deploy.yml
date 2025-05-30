@@ -36,3 +36,4 @@ jobs:
             export LOCATIONIQ_API_KEY="${{ secrets.LOCATIONIQ_API_KEY }}"
             chmod +x ~/deploy-backend.sh
             ~/deploy-backend.sh
+
