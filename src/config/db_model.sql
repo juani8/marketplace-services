@@ -4,20 +4,25 @@ CREATE TABLE tenants (
   nombre VARCHAR(100) NOT NULL,
   razon_social VARCHAR(150),
   cuenta_bancaria VARCHAR(100),
-  calle VARCHAR(100),
-  numero VARCHAR(20),
-  ciudad VARCHAR(100),
-  provincia VARCHAR(100),
-  codigo_postal VARCHAR(10),
-  lon NUMERIC(9,6),
-  lat NUMERIC(9,6),
-  horario_apertura TIME,
-  horario_cierre TIME,
   estado VARCHAR(20) DEFAULT 'activo' CHECK (estado IN ('activo','inactivo')),
   fecha_registro TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   fecha_actualizacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE IF NOT EXISTS comercios (
+  comercio_id SERIAL PRIMARY KEY,
+  tenant_id INTEGER REFERENCES tenants(tenant_id) ON DELETE CASCADE,
+  nombre TEXT NOT NULL,
+  calle VARCHAR(100),
+  numero VARCHAR(20),
+  ciudad VARCHAR(100),
+  provincia VARCHAR(100),
+  codigo_postal VARCHAR(10),
+  lat NUMERIC,
+  lon NUMERIC,
+  horario_apertura TIME,
+  horario_cierre TIME
+)
 
 CREATE TABLE IF NOT EXISTS categorias (
   categoria_id SERIAL PRIMARY KEY,
@@ -25,6 +30,7 @@ CREATE TABLE IF NOT EXISTS categorias (
   descripcion  VARCHAR(255),
   fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
 -- Tabla: productos (N:1 con catalogos, 1:N con imagenes_producto, 1:N con promociones)
 CREATE TABLE IF NOT EXISTS productos (
   producto_id     SERIAL PRIMARY KEY,
@@ -33,9 +39,15 @@ CREATE TABLE IF NOT EXISTS productos (
   nombre_producto VARCHAR(100) NOT NULL,
   descripcion     VARCHAR(255),
   precio          NUMERIC(10,2),
-  cantidad_stock  INTEGER,
   fecha_creacion  TIMESTAMP      DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE TABLE IF NOT EXISTS stock_comercio (
+  comercio_id INTEGER REFERENCES comercios(comercio_id) ON DELETE CASCADE,
+  producto_id INTEGER REFERENCES productos(producto_id) ON DELETE CASCADE,
+  cantidad_stock INTEGER NOT NULL,
+  PRIMARY KEY (comercio_id, producto_id)
+)
 
 -- Tabla: imagenes_producto (N:1 con productos)
 CREATE TABLE IF NOT EXISTS imagenes_producto (
