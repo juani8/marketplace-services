@@ -15,7 +15,7 @@ const app = express();
 
 // ✅ CORS antes que nada
 app.use(cors({
-  origin: ['https://marketplace-mv6g.onrender.com', 'http://localhost:5173'],
+  origin: ['https://marketplace.deliver.com', 'http://localhost:5173'],
   credentials: true
 }));
 
