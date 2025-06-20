@@ -93,6 +93,6 @@ CREATE TABLE IF NOT EXISTS usuarios_tenant (
   nombre VARCHAR(100) NOT NULL,
   email VARCHAR(100) UNIQUE NOT NULL,
   password_hash VARCHAR(255) NOT NULL,
-  rol VARCHAR(50) NOT NULL CHECK (rol IN ('admin', 'vendedor', 'encargado')),
+  rol VARCHAR(50) NOT NULL CHECK (rol IN ('admin', 'operador')),
   fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
