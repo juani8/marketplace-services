@@ -86,3 +86,13 @@ CREATE TABLE IF NOT EXISTS promociones_productos (
   producto_id  INTEGER REFERENCES productos(producto_id) ON DELETE CASCADE,
   PRIMARY KEY (promocion_id, producto_id)
 );
+
+CREATE TABLE IF NOT EXISTS usuarios_tenant (
+  usuario_id SERIAL PRIMARY KEY,
+  tenant_id INTEGER REFERENCES tenants(tenant_id) ON DELETE CASCADE,
+  nombre VARCHAR(100) NOT NULL,
+  email VARCHAR(100) UNIQUE NOT NULL,
+  password_hash VARCHAR(255) NOT NULL,
+  rol VARCHAR(50) NOT NULL CHECK (rol IN ('admin', 'vendedor', 'encargado')),
+  fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);

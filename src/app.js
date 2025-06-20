@@ -10,6 +10,7 @@ const sellerRoutes = require('./routes/sellerRoutes');
 const categoriesRoutes = require('./routes/categoriesRoutes');
 const productRoutes = require('./routes/productRoutes');
 const promotionsRoutes = require('./routes/promotionsRoutes');
+const authRoutes = require('./routes/authRoutes');
 
 const app = express();
 
@@ -28,6 +29,7 @@ app.use('/api/sellers', sellerRoutes);
 app.use('/api/categories', categoriesRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/promotions', promotionsRoutes);
+app.use('/api/auth', authRoutes);
 
 // Endpoint de test
 app.get('/status', async (req, res) => {
