@@ -19,10 +19,20 @@ CREATE TABLE IF NOT EXISTS comercios (
   provincia VARCHAR(100),
   codigo_postal VARCHAR(10),
   lat NUMERIC,
-  lon NUMERIC,
-  horario_apertura TIME,
-  horario_cierre TIME
-)
+  lon NUMERIC
+);
+
+
+-- Creamos la nueva tabla de horarios
+CREATE TABLE IF NOT EXISTS horarios_comercio (
+  horario_id SERIAL PRIMARY KEY,
+  comercio_id INTEGER REFERENCES comercios(comercio_id) ON DELETE CASCADE,
+  dia_semana INTEGER NOT NULL CHECK (dia_semana BETWEEN 0 AND 6), -- 0 = Domingo
+  hora_apertura TIME, -- puede ser NULL si está cerrado
+  hora_cierre TIME, -- puede ser NULL si está cerrado
+  estado VARCHAR(20) DEFAULT 'activo' CHECK (estado IN ('activo','inactivo')),
+  UNIQUE(comercio_id, dia_semana)
+);
 
 CREATE TABLE IF NOT EXISTS categorias (
   categoria_id SERIAL PRIMARY KEY,
@@ -95,4 +105,31 @@ CREATE TABLE IF NOT EXISTS usuarios_tenant (
   password_hash VARCHAR(255) NOT NULL,
   rol VARCHAR(50) NOT NULL CHECK (rol IN ('admin', 'operador')),
   fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS usuario_comercio (
+  usuario_id INTEGER REFERENCES usuarios_tenant(usuario_id) ON DELETE CASCADE,
+  comercio_id INTEGER REFERENCES comercios(comercio_id) ON DELETE CASCADE,
+  PRIMARY KEY (usuario_id, comercio_id)
+);
+
+CREATE TABLE IF NOT EXISTS ordenes (
+  orden_id SERIAL PRIMARY KEY,
+  tenant_id INTEGER REFERENCES tenants(tenant_id) ON DELETE CASCADE,
+  comercio_id INTEGER REFERENCES comercios(comercio_id) ON DELETE CASCADE,
+  cliente_nombre VARCHAR(150) NOT NULL,
+  estado VARCHAR(20) NOT NULL CHECK (estado IN ('pendiente', 'aceptada', 'rechazada', 'cancelada')),
+  total NUMERIC(10,2) NOT NULL,
+  direccion_entrega TEXT NOT NULL,
+  fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  fecha_actualizacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS ordenes_productos (
+  orden_id INTEGER REFERENCES ordenes(orden_id) ON DELETE CASCADE,
+  producto_id INTEGER REFERENCES productos(producto_id) ON DELETE CASCADE,
+  precio_unitario NUMERIC(10,2) NOT NULL,
+  cantidad INTEGER NOT NULL,
+  subtotal NUMERIC(10,2) GENERATED ALWAYS AS (precio_unitario * cantidad) STORED,
+  PRIMARY KEY (orden_id, producto_id)
 );
