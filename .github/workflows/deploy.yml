@@ -40,3 +40,4 @@ jobs:
             export FRONTEND_URL="${{ secrets.FRONTEND_URL }}"
             chmod +x ~/deploy-backend.sh
             ~/deploy-backend.sh
+
