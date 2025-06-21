@@ -5,18 +5,25 @@ set -e
 apt update -y
 apt install -y git curl
 
-# Instalar Node.js
+# Instalar Node.js y npm
 curl -fsSL https://deb.nodesource.com/setup_18.x | bash -
 apt install -y nodejs
 
-# Clonar el repo y entrar
+# Instalar PM2 si no existe
+if ! command -v pm2 &> /dev/null; then
+  npm install -g pm2
+fi
+
 cd /home/ubuntu
 
+# Clonar el repo (si no existe)
 if [ ! -d "backend" ]; then
   git clone "${BACKEND_REPO_URL}" backend
 fi
 
 cd backend/src
+
+# Instalar dependencias
 npm install
 
 # Crear archivo .env solo si las variables existen
@@ -33,15 +40,10 @@ else
   echo "One or more environment variables for .env are missing. Skipping .env creation."
 fi
 
-# Instalar PM2 si no existe
-if ! command -v pm2 &> /dev/null; then
-  npm install -g pm2
-fi
-
-# Parar cualquier proceso anterior
+# Parar y eliminar el proceso anterior (si existe)
 pm2 stop backend || true
 pm2 delete backend || true
 
-# Ejecutar backend con PM2 (ajusta server.js si es otro archivo)
+# Ejecutar backend con PM2 (ajusta server.js si tu entrypoint es distinto)
 pm2 start server.js --name backend
 pm2 save
