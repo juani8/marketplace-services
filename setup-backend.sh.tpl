@@ -38,5 +38,10 @@ if ! command -v pm2 &> /dev/null; then
   npm install -g pm2
 fi
 
-# Ejecutar backend con PM2
-pm2 start npm -- start
+# Parar cualquier proceso anterior
+pm2 stop backend || true
+pm2 delete backend || true
+
+# Ejecutar backend con PM2 (ajusta server.js si es otro archivo)
+pm2 start server.js --name backend
+pm2 save
