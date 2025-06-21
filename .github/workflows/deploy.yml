@@ -36,6 +36,8 @@ jobs:
             export CLOUDINARY_CLOUD_NAME="${{ secrets.CLOUDINARY_CLOUD_NAME }}"
             export CLOUDINARY_API_KEY="${{ secrets.CLOUDINARY_API_KEY }}"
             export CLOUDINARY_API_SECRET="${{ secrets.CLOUDINARY_API_SECRET }}"
+            export DATABASE_URL="${{ secrets.DATABASE_URL }}"
+            export FRONTEND_URL="${{ secrets.FRONTEND_URL }}"
             chmod +x ~/deploy-backend.sh
             ~/deploy-backend.sh
 
