@@ -30,7 +30,7 @@ app.use('/api/products', productRoutes);
 app.use('/api/promotions', promotionsRoutes);
 
 // Endpoint de test
-app.get('/status', async (req, res) => {
+app.get('/api/status', async (req, res) => {
   try {
     const result = await pool.query('SELECT NOW()');
     res.json({
