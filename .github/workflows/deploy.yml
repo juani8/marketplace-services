@@ -33,6 +33,9 @@ jobs:
             export DB_USERNAME="${{ secrets.DB_USERNAME }}"
             export DB_PASSWORD="${{ secrets.DB_PASSWORD }}"
             export LOCATIONIQ_API_KEY="${{ secrets.LOCATIONIQ_API_KEY }}"
+            export CLOUDINARY_CLOUD_NAME="${{ secrets.CLOUDINARY_CLOUD_NAME }}"
+            export CLOUDINARY_API_KEY="${{ secrets.CLOUDINARY_API_KEY }}"
+            export CLOUDINARY_API_SECRET="${{ secrets.CLOUDINARY_API_SECRET }}"
             chmod +x ~/deploy-backend.sh
             ~/deploy-backend.sh
 
