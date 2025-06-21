@@ -2,41 +2,48 @@
 
 set -e
 
-# Datos del backend
 BACKEND_DIR="/home/ubuntu/backend"
 REPO_URL="https://github.com/juani8/marketplace-services.git"
 
-# Si no existe la carpeta, clónala
+# Clona si no existe
 if [ ! -d "$BACKEND_DIR" ]; then
   git clone "$REPO_URL" "$BACKEND_DIR"
 fi
 
 cd "$BACKEND_DIR"
 
-# Si no es un repo git:
-if [ ! -d ".git" ]; then
-  echo "No .git directory found! Exiting."
-  exit 1
-fi
-
 git config --global --add safe.directory "$BACKEND_DIR"
-
-# Forzar a que el código quede igual que el remoto (evita ramas divergentes)
 git fetch origin main
 git reset --hard origin/main
 
-# Permisos correctos
 sudo chown -R ubuntu:ubuntu "$BACKEND_DIR"
 sudo chmod -R u+rwX "$BACKEND_DIR"
 
 cd src
-
 npm install
 
-# Si pm2 no existe:
+# Crea .env si las variables están presentes
+if [[ -n "$RDS_ENDPOINT" && -n "$DB_NAME" && -n "$DB_USERNAME" && -n "$DB_PASSWORD" && -n "$LOCATIONIQ_API_KEY" ]]; then
+  cat <<EOF > .env
+DB_HOST=${RDS_ENDPOINT}
+DB_NAME=${DB_NAME}
+DB_USER=${DB_USERNAME}
+DB_PASS=${DB_PASSWORD}
+LOCATIONIQ_API_KEY=${LOCATIONIQ_API_KEY}
+EOF
+  echo ".env file created."
+else
+  echo "One or more environment variables for .env are missing. Skipping .env creation."
+fi
+
 if ! command -v pm2 &> /dev/null; then
   sudo npm install -g pm2
 fi
 
-# Intenta reiniciar, si no existe lo crea
-pm2 restart all || pm2 start npm -- start
+# Parar y eliminar el proceso anterior (si existe)
+pm2 stop backend || true
+pm2 delete backend || true
+
+# Ejecutar backend con PM2 (ajusta server.js si corresponde)
+pm2 start app.js --name backend
+pm2 save
