@@ -1,4 +1,4 @@
-name: Deploy Backend via Frontend Bastion
+name: Deploy Backend
 
 on:
   push:
@@ -10,25 +10,24 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: Upload deploy-backend.sh to Frontend EC2
+      - name: Upload deploy-backend.sh a EC2
         uses: appleboy/scp-action@v0.1.4
         with:
-          host: ${{ secrets.FRONTEND_EC2_IP }}
+          host: ${{ secrets.APP_EC2_IP }}
           username: ubuntu
-          key: ${{ secrets.FRONTEND_EC2_KEY }}
+          key: ${{ secrets.APP_EC2_KEY }}
           port: 22
           source: "deploy-backend.sh"
           target: "~/"
           timeout: "600s"
 
-      - name: Trigger backend deploy from Frontend
+      - name: Ejecutar deploy en EC2
         uses: appleboy/ssh-action@v1
         with:
-          host: ${{ secrets.FRONTEND_EC2_IP }}
+          host: ${{ secrets.APP_EC2_IP }}
           username: ubuntu
-          key: ${{ secrets.FRONTEND_EC2_KEY }}
+          key: ${{ secrets.APP_EC2_KEY }}
           script: |
-            export BACKEND_REPO_URL="${{ secrets.BACKEND_REPO_URL }}"
             export RDS_ENDPOINT="${{ secrets.RDS_ENDPOINT }}"
             export DB_NAME="${{ secrets.DB_NAME }}"
             export DB_USERNAME="${{ secrets.DB_USERNAME }}"
