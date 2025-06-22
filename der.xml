@@ -1,0 +1,84 @@
+<mxfile host="app.diagrams.net">
+  <diagram name="Modelo DER" id="v1">
+    <mxGraphModel dx="1074" dy="748" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+        
+        <!-- TENANTS -->
+        <mxCell id="tenant" value="TENANTS&#xa;tenant_id (PK)&#xa;nombre&#xa;razon_social&#xa;cuenta_bancaria&#xa;estado" style="shape=swimlane;whiteSpace=wrap;container=1;" vertex="1" parent="1">
+          <mxGeometry x="20" y="20" width="180" height="140" as="geometry"/>
+        </mxCell>
+
+        <!-- COMERCIOS -->
+        <mxCell id="comercios" value="COMERCIOS&#xa;comercio_id (PK)&#xa;tenant_id (FK)&#xa;nombre&#xa;calle&#xa;lat/lon" style="shape=swimlane;" vertex="1" parent="1">
+          <mxGeometry x="260" y="20" width="180" height="140" as="geometry"/>
+        </mxCell>
+        
+        <!-- PRODUCTOS -->
+        <mxCell id="productos" value="PRODUCTOS&#xa;producto_id (PK)&#xa;tenant_id (FK)&#xa;categoria_id (FK)&#xa;nombre_producto&#xa;precio" style="shape=swimlane;" vertex="1" parent="1">
+          <mxGeometry x="20" y="200" width="200" height="140" as="geometry"/>
+        </mxCell>
+
+        <!-- CATEGORIAS -->
+        <mxCell id="categorias" value="CATEGORIAS&#xa;categoria_id (PK)&#xa;nombre&#xa;descripcion" style="shape=swimlane;" vertex="1" parent="1">
+          <mxGeometry x="260" y="200" width="180" height="100" as="geometry"/>
+        </mxCell>
+        
+        <!-- STOCK_COMERCIO -->
+        <mxCell id="stock" value="STOCK_COMERCIO&#xa;comercio_id (FK)&#xa;producto_id (FK)&#xa;cantidad_stock" style="shape=swimlane;" vertex="1" parent="1">
+          <mxGeometry x="500" y="200" width="180" height="100" as="geometry"/>
+        </mxCell>
+
+        <!-- PROMOCIONES -->
+        <mxCell id="promos" value="PROMOCIONES&#xa;promocion_id (PK)&#xa;nombre&#xa;tipo_promocion&#xa;valor_descuento" style="shape=swimlane;" vertex="1" parent="1">
+          <mxGeometry x="500" y="20" width="180" height="120" as="geometry"/>
+        </mxCell>
+
+        <!-- PROMOCIONES_PRODUCTOS -->
+        <mxCell id="promos_prod" value="PROMOCIONES_PRODUCTOS&#xa;promocion_id (FK)&#xa;producto_id (FK)" style="shape=swimlane;" vertex="1" parent="1">
+          <mxGeometry x="720" y="20" width="180" height="80" as="geometry"/>
+        </mxCell>
+
+        <!-- IMAGENES_PRODUCTO -->
+        <mxCell id="imagenes" value="IMAGENES_PRODUCTO&#xa;imagen_id (PK)&#xa;producto_id (FK)&#xa;url" style="shape=swimlane;" vertex="1" parent="1">
+          <mxGeometry x="720" y="200" width="180" height="100" as="geometry"/>
+        </mxCell>
+
+        <!-- DATOS_CONTACTO -->
+        <mxCell id="contacto" value="DATOS_CONTACTO&#xa;contacto_id (PK)&#xa;tenant_id (FK)&#xa;email&#xa;telefono" style="shape=swimlane;" vertex="1" parent="1">
+          <mxGeometry x="20" y="380" width="180" height="100" as="geometry"/>
+        </mxCell>
+        
+        <!-- RELACIONES -->
+        <mxCell id="rel1" style="endArrow=block;dashed=0;" edge="1" parent="1" source="tenant" target="comercios">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="rel2" style="endArrow=block;dashed=0;" edge="1" parent="1" source="tenant" target="productos">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="rel3" style="endArrow=block;" edge="1" parent="1" source="tenant" target="contacto">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="rel4" style="endArrow=block;" edge="1" parent="1" source="productos" target="categorias">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="rel5" style="endArrow=block;" edge="1" parent="1" source="productos" target="stock">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="rel6" style="endArrow=block;" edge="1" parent="1" source="comercios" target="stock">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="rel7" style="endArrow=block;" edge="1" parent="1" source="productos" target="imagenes">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="rel8" style="endArrow=block;" edge="1" parent="1" source="productos" target="promos_prod">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="rel9" style="endArrow=block;" edge="1" parent="1" source="promos" target="promos_prod">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
