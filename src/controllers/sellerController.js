@@ -1,5 +1,6 @@
 const TenantModel = require('../models/tenant.model');
 const SellerModel = require('../models/seller.model');
+const ProductoModel = require('../models/producto.model');
 const { geocodeAddress } = require('../services/geocodingService');
 const {
   formatearHorarios,
@@ -54,13 +55,13 @@ async function getSellersNearby(req, res) {
 // GET /sellers - Obtener comercios del tenant
 async function getComercios(req, res) {
   try {
-    const { tenant_id } = req.body;
+    const { usuario_id } = req.body;
     const { page = 1, size = 10 } = req.query;
 
-    if (!tenant_id) {
-      return res.status(400).json({ 
+    if (!usuario_id) {
+      return res.status(400).json({
         success: false,
-        message: 'tenant_id es requerido en el body' 
+        message: 'usuario_id es requerido en el body'
       });
     }
 
@@ -81,8 +82,8 @@ async function getComercios(req, res) {
       });
     }
 
-    const result = await SellerModel.getByTenant(tenant_id, pageNum, sizeNum);
-
+    const result = await SellerModel.getByUser(usuario_id, pageNum, sizeNum);
+    
     // Agregar horarios a cada comercio
     const comerciosConHorarios = await Promise.all(
       result.data.map(async (comercio) => {
@@ -448,11 +449,246 @@ async function deleteComercio(req, res) {
   }
 }
 
+// ============ ENDPOINTS DE PRODUCTOS Y STOCK ============
+
+// GET /sellers/:id/products - Obtener productos del comercio con stock
+async function getComercioProducts(req, res) {
+  try {
+    const { id } = req.params;
+
+    if (!id || isNaN(parseInt(id))) {
+      return res.status(400).json({ 
+        success: false,
+        message: 'ID de comercio inválido' 
+      });
+    }
+
+    const comercioId = parseInt(id);
+
+    // Verificar que el comercio existe
+    const comercio = await SellerModel.getById(comercioId);
+    if (!comercio) {
+      return res.status(404).json({ 
+        success: false,
+        message: 'Comercio no encontrado' 
+      });
+    }
+
+    // Obtener productos con stock
+    const productos = await SellerModel.getProductsWithStock(comercioId);
+
+    // Agregar imágenes y promociones a cada producto
+    const productosConDetalles = await Promise.all(
+      productos.map(async (producto) => {
+        const [imagenes, promociones] = await Promise.all([
+          ProductoModel.getImagenes(producto.producto_id),
+          ProductoModel.getPromociones(producto.producto_id)
+        ]);
+
+        return {
+          ...producto,
+          imagenes,
+          promociones
+        };
+      })
+    );
+
+    res.json({
+      success: true,
+      data: {
+        comercio: {
+          comercio_id: comercio.comercio_id,
+          nombre: comercio.nombre,
+          tenant_id: comercio.tenant_id
+        },
+        productos: productosConDetalles
+      }
+    });
+
+  } catch (error) {
+    console.error('Error obteniendo productos del comercio:', error);
+    res.status(500).json({ 
+      success: false,
+      message: 'Error interno del servidor' 
+    });
+  }
+}
+
+// GET /sellers/:id/products/:productId/stock - Obtener stock específico de un producto
+async function getProductStock(req, res) {
+  try {
+    const { id, productId } = req.params;
+
+    if (!id || isNaN(parseInt(id))) {
+      return res.status(400).json({ 
+        success: false,
+        message: 'ID de comercio inválido' 
+      });
+    }
+
+    if (!productId || isNaN(parseInt(productId))) {
+      return res.status(400).json({ 
+        success: false,
+        message: 'ID de producto inválido' 
+      });
+    }
+
+    const comercioId = parseInt(id);
+    const productoId = parseInt(productId);
+
+    // Verificar que el comercio existe
+    const comercio = await SellerModel.getById(comercioId);
+    if (!comercio) {
+      return res.status(404).json({ 
+        success: false,
+        message: 'Comercio no encontrado' 
+      });
+    }
+
+    // Verificar que el producto existe y pertenece al tenant del comercio
+    const producto = await ProductoModel.getById(productoId);
+    if (!producto) {
+      return res.status(404).json({ 
+        success: false,
+        message: 'Producto no encontrado' 
+      });
+    }
+
+    if (producto.tenant_id !== comercio.tenant_id) {
+      return res.status(400).json({ 
+        success: false,
+        message: 'El producto no pertenece al tenant del comercio' 
+      });
+    }
+
+    // Obtener stock específico
+    const stock = await SellerModel.getProductStock(comercioId, productoId);
+
+    if (!stock) {
+      // Si no hay registro de stock, devolver stock 0
+      return res.json({
+        success: true,
+        data: {
+          comercio_id: comercioId,
+          producto_id: productoId,
+          cantidad_stock: 0,
+          producto_nombre: producto.nombre_producto,
+          comercio_nombre: comercio.nombre
+        }
+      });
+    }
+
+    res.json({
+      success: true,
+      data: stock
+    });
+
+  } catch (error) {
+    console.error('Error obteniendo stock del producto:', error);
+    res.status(500).json({ 
+      success: false,
+      message: 'Error interno del servidor' 
+    });
+  }
+}
+
+// PATCH /sellers/:id/products/:productId/stock - Actualizar stock de un producto
+async function updateProductStock(req, res) {
+  try {
+    const { id, productId } = req.params;
+    const { cantidad_stock } = req.body;
+
+    if (!id || isNaN(parseInt(id))) {
+      return res.status(400).json({ 
+        success: false,
+        message: 'ID de comercio inválido' 
+      });
+    }
+
+    if (!productId || isNaN(parseInt(productId))) {
+      return res.status(400).json({ 
+        success: false,
+        message: 'ID de producto inválido' 
+      });
+    }
+
+    if (cantidad_stock === undefined || cantidad_stock === null || isNaN(parseInt(cantidad_stock))) {
+      return res.status(400).json({ 
+        success: false,
+        message: 'cantidad_stock es requerida y debe ser un número válido' 
+      });
+    }
+
+    const cantidadStock = parseInt(cantidad_stock);
+
+    if (cantidadStock < 0) {
+      return res.status(400).json({ 
+        success: false,
+        message: 'La cantidad de stock no puede ser negativa' 
+      });
+    }
+
+    const comercioId = parseInt(id);
+    const productoId = parseInt(productId);
+
+    // Verificar que el comercio existe
+    const comercio = await SellerModel.getById(comercioId);
+    if (!comercio) {
+      return res.status(404).json({ 
+        success: false,
+        message: 'Comercio no encontrado' 
+      });
+    }
+
+    // Verificar que el producto existe
+    const producto = await ProductoModel.getById(productoId);
+    if (!producto) {
+      return res.status(404).json({ 
+        success: false,
+        message: 'Producto no encontrado' 
+      });
+    }
+
+    // Actualizar stock
+    const stockActualizado = await SellerModel.updateProductStock(comercioId, productoId, cantidadStock);
+
+    res.json({
+      success: true,
+      message: 'Stock actualizado exitosamente',
+      data: {
+        comercio_id: stockActualizado.comercio_id,
+        producto_id: stockActualizado.producto_id,
+        cantidad_stock: stockActualizado.cantidad_stock,
+        producto_nombre: producto.nombre_producto,
+        comercio_nombre: comercio.nombre
+      }
+    });
+
+  } catch (error) {
+    console.error('Error actualizando stock del producto:', error);
+    
+    if (error.message === 'Producto no pertenece al tenant del comercio') {
+      return res.status(400).json({ 
+        success: false,
+        message: 'El producto no pertenece al tenant del comercio' 
+      });
+    }
+
+    res.status(500).json({ 
+      success: false,
+      message: 'Error interno del servidor' 
+    });
+  }
+}
+
 module.exports = { 
   getSellersNearby,
   getComercios,
   getComercioById,
   createComercio,
   patchComercio,
-  deleteComercio
+  deleteComercio,
+  getComercioProducts,
+  getProductStock,
+  updateProductStock
 };

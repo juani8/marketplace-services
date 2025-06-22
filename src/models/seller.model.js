@@ -337,7 +337,134 @@ const SellerModel = {
       [usuarioId, comercioId]
     );
     return res.rows.length > 0;
-  }
+  },
+
+  // ============ GESTIÓN DE PRODUCTOS Y STOCK ============
+
+  // Obtener productos del comercio con su stock
+  async getProductsWithStock(comercioId) {
+    try {
+      const query = `
+        SELECT 
+          p.producto_id,
+          p.nombre_producto,
+          p.descripcion,
+          p.precio,
+          p.categoria_id,
+          p.fecha_creacion,
+          COALESCE(sc.cantidad_stock, 0) as cantidad_stock,
+          c.nombre as categoria_nombre
+        FROM productos p
+        INNER JOIN comercios co ON p.tenant_id = co.tenant_id
+        LEFT JOIN stock_comercio sc ON p.producto_id = sc.producto_id AND sc.comercio_id = $1
+        LEFT JOIN categorias c ON p.categoria_id = c.categoria_id
+        WHERE co.comercio_id = $1
+        ORDER BY p.nombre_producto
+      `;
+      
+      const result = await pool.query(query, [comercioId]);
+      return result.rows;
+      
+    } catch (error) {
+      console.error('Error en getProductsWithStock:', error);
+      throw error;
+    }
+  },
+
+  // Obtener stock específico de un producto en un comercio
+  async getProductStock(comercioId, productoId) {
+    try {
+      const query = `
+        SELECT 
+          sc.comercio_id,
+          sc.producto_id,
+          sc.cantidad_stock,
+          p.nombre_producto,
+          co.nombre as comercio_nombre
+        FROM stock_comercio sc
+        INNER JOIN productos p ON sc.producto_id = p.producto_id
+        INNER JOIN comercios co ON sc.comercio_id = co.comercio_id
+        WHERE sc.comercio_id = $1 AND sc.producto_id = $2
+      `;
+      
+      const result = await pool.query(query, [comercioId, productoId]);
+      return result.rows[0] || null;
+      
+    } catch (error) {
+      console.error('Error en getProductStock:', error);
+      throw error;
+    }
+  },
+
+  // Actualizar stock de un producto en un comercio
+  async updateProductStock(comercioId, productoId, cantidadStock) {
+    try {
+      // Verificar que el producto pertenece al tenant del comercio
+      const checkQuery = `
+        SELECT 1
+        FROM productos p
+        INNER JOIN comercios c ON p.tenant_id = c.tenant_id
+        WHERE p.producto_id = $1 AND c.comercio_id = $2
+      `;
+      
+      const checkResult = await pool.query(checkQuery, [productoId, comercioId]);
+      
+      if (checkResult.rows.length === 0) {
+        throw new Error('Producto no pertenece al tenant del comercio');
+      }
+
+      // Upsert del stock
+      const query = `
+        INSERT INTO stock_comercio (comercio_id, producto_id, cantidad_stock)
+        VALUES ($1, $2, $3)
+        ON CONFLICT (comercio_id, producto_id)
+        DO UPDATE SET cantidad_stock = EXCLUDED.cantidad_stock
+        RETURNING *
+      `;
+      
+      const result = await pool.query(query, [comercioId, productoId, cantidadStock]);
+      return result.rows[0];
+      
+    } catch (error) {
+      console.error('Error en updateProductStock:', error);
+      throw error;
+    }
+  },
+  async getByUser(usuarioId, page = 1, size = 10) {
+    const offset = (page - 1) * size;
+  
+    try {
+      const comerciosQuery = `
+        SELECT c.*
+        FROM usuario_comercio uc
+        INNER JOIN comercios c ON uc.comercio_id = c.comercio_id
+        WHERE uc.usuario_id = $1
+        ORDER BY c.comercio_id
+        LIMIT $2 OFFSET $3
+      `;
+  
+      const countQuery = `
+        SELECT COUNT(*) as total
+        FROM usuario_comercio uc
+        INNER JOIN comercios c ON uc.comercio_id = c.comercio_id
+        WHERE uc.usuario_id = $1
+      `;
+  
+      const [comerciosResult, countResult] = await Promise.all([
+        pool.query(comerciosQuery, [usuarioId, size, offset]),
+        pool.query(countQuery, [usuarioId])
+      ]);
+  
+      return {
+        data: comerciosResult.rows,
+        totalItems: parseInt(countResult.rows[0].total)
+      };
+    } catch (error) {
+      console.error('Error en getByUser:', error);
+      throw error;
+    }
+  },
+  
 };
 
 module.exports = SellerModel; 

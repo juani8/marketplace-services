@@ -135,6 +135,134 @@ const ProductoModel = {
       console.error('Error eliminando imágenes:', error);
       throw error;
     }
+  },
+
+  // ============ CARGA MASIVA DE PRODUCTOS ============
+
+  // Crear múltiples productos en una transacción
+  async createBulk(productosData, tenantId) {
+    const client = await pool.connect();
+    
+    try {
+      await client.query('BEGIN');
+      
+      const productosCreados = [];
+      const errores = [];
+
+      for (let i = 0; i < productosData.length; i++) {
+        const producto = productosData[i];
+        
+        try {
+          // Validar datos requeridos
+          if (!producto.nombre_producto || !producto.precio) {
+            errores.push({
+              fila: i + 2, // +2 porque fila 1 es header y arrays empiezan en 0
+              error: 'nombre_producto y precio son requeridos'
+            });
+            continue;
+          }
+
+          // Validar precio
+          const precio = parseFloat(producto.precio);
+          if (isNaN(precio) || precio <= 0) {
+            errores.push({
+              fila: i + 2,
+              error: 'precio debe ser un número mayor a 0'
+            });
+            continue;
+          }
+
+          // Validar categoria_id si se proporciona
+          let categoriaId = null;
+          if (producto.categoria_id) {
+            categoriaId = parseInt(producto.categoria_id);
+            if (isNaN(categoriaId)) {
+              errores.push({
+                fila: i + 2,
+                error: 'categoria_id debe ser un número válido'
+              });
+              continue;
+            }
+
+            // Verificar que la categoría existe
+            const categoriaCheck = await client.query(
+              'SELECT categoria_id FROM categorias WHERE categoria_id = $1',
+              [categoriaId]
+            );
+            
+            if (categoriaCheck.rows.length === 0) {
+              errores.push({
+                fila: i + 2,
+                error: `categoría con ID ${categoriaId} no existe`
+              });
+              continue;
+            }
+          }
+
+          const query = `
+            INSERT INTO productos (
+              tenant_id,
+              nombre_producto, 
+              descripcion, 
+              precio, 
+              categoria_id
+            ) 
+            VALUES ($1, $2, $3, $4, $5) 
+            RETURNING *
+          `;
+          
+          const values = [
+            tenantId,
+            producto.nombre_producto,
+            producto.descripcion || null,
+            precio,
+            categoriaId
+          ];
+
+          const result = await client.query(query, values);
+          productosCreados.push({
+            fila: i + 2,
+            producto: result.rows[0]
+          });
+
+        } catch (error) {
+          console.error(`Error creando producto en fila ${i + 2}:`, error);
+          errores.push({
+            fila: i + 2,
+            error: error.message
+          });
+        }
+      }
+
+      await client.query('COMMIT');
+      
+      return {
+        productos_creados: productosCreados,
+        errores: errores,
+        total_procesados: productosData.length,
+        total_exitosos: productosCreados.length,
+        total_errores: errores.length
+      };
+
+    } catch (error) {
+      await client.query('ROLLBACK');
+      console.error('Error en createBulk:', error);
+      throw error;
+    } finally {
+      client.release();
+    }
+  },
+
+  // Obtener categorías para validación
+  async getCategorias() {
+    try {
+      const query = 'SELECT categoria_id, nombre FROM categorias ORDER BY nombre';
+      const result = await pool.query(query);
+      return result.rows;
+    } catch (error) {
+      console.error('Error obteniendo categorías:', error);
+      throw error;
+    }
   }
 };
 

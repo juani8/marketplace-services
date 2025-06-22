@@ -6,7 +6,10 @@ const {
   getComercioById,
   createComercio,
   patchComercio,
-  deleteComercio
+  deleteComercio,
+  getComercioProducts,
+  getProductStock,
+  updateProductStock
 } = require('../controllers/sellerController');
 
 // Middleware para determinar qué función usar en GET /sellers
@@ -38,5 +41,16 @@ router.patch('/:id', patchComercio);
 
 // DELETE /sellers/:id - Eliminar comercio
 router.delete('/:id', deleteComercio);
+
+// ============ RUTAS DE PRODUCTOS Y STOCK ============
+
+// GET /sellers/:id/products - Obtener productos del comercio con stock
+router.get('/:id/products', getComercioProducts);
+
+// GET /sellers/:id/products/:productId/stock - Obtener stock específico de un producto
+router.get('/:id/products/:productId/stock', getProductStock);
+
+// PATCH /sellers/:id/products/:productId/stock - Actualizar stock de un producto
+router.patch('/:id/products/:productId/stock', updateProductStock);
 
 module.exports = router;
