@@ -6,4 +6,6 @@ router.post('/login', authController.login);
 
 router.post('/register-tenant', authController.registerTenant)
 
+router.post('/register-internal', authController.registerInternalUser)
+
 module.exports = router;
