@@ -8,7 +8,8 @@ const upload = require('../config/multerConfig');
 // Obtener todos los productos de un tenant
 async function getProducts(req, res) {
   try {
-    const tenantId = 1; // tenantId, se deberia obtener del JWT cuando esté implementado.
+    const tenantId = req.headers['x-tenant-id']; // tenantId, se deberia obtener del JWT cuando esté implementado.
+
     // Obtenemos los productos del catálogo
     const productos = await ProductoModel.getProductsByTenantId(tenantId);
     
@@ -56,7 +57,7 @@ async function createProduct(req, res) {
       categoria_id
     } = req.body;
 
-    const tenantId = 1; // tenantId, se deberia obtener del JWT cuando esté implementado.
+    const tenantId = req.headers['x-tenant-id']; // tenantId, se deberia obtener del JWT cuando esté implementado.
 
     // Validar datos requeridos
     if (!nombre_producto || !precio) {
