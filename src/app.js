@@ -11,6 +11,7 @@ const categoriesRoutes = require('./routes/categoriesRoutes');
 const productRoutes = require('./routes/productRoutes');
 const promotionsRoutes = require('./routes/promotionsRoutes');
 const authRoutes = require('./routes/authRoutes');
+const callbackRoutes = require('./routes/callbackRoutes');
 
 const app = express();
 
@@ -30,6 +31,9 @@ app.use('/api/categories', categoriesRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/promotions', promotionsRoutes);
 app.use('/api/auth', authRoutes);
+
+// Rutas de callback para integración con hub de eventos (sin prefijo /api)
+app.use('/', callbackRoutes);
 
 // Endpoint de test
 app.get('/status', async (req, res) => {
