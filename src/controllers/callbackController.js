@@ -49,46 +49,42 @@ async function postCallback(req, res) {
     console.log('[HUB EVENT RECEIVED] Headers:', req.headers);
     console.log('[HUB EVENT RECEIVED] Content-Type:', req.headers['content-type']);
 
-    // Validar que el evento tenga la estructura esperada
-    if (!eventData || !eventData.topic || !eventData.payload) {
-      console.warn('Evento recibido sin estructura válida. Body:', eventData);
-      console.warn('Tipo de eventData:', typeof eventData);
-      console.warn('Keys en eventData:', Object.keys(eventData));
-      // Devolver 200 para evitar reintentos del hub
-      return res.status(200).json({
-        success: false,
-        message: 'Estructura de evento inválida'
-      });
-    }
-
-    // Obtener el listener correspondiente al topic
-    const listener = listeners[eventData.topic];
-    
-    if (!listener) {
-      console.warn(`No hay listener registrado para el topic: ${eventData.topic}`);
-      return res.status(200).json({
-        success: false,
-        message: `Topic no soportado: ${eventData.topic}`
-      });
-    }
-
-    // Procesar el evento usando el listener correspondiente
-    const processed = await listener.processEvent(eventData);
-
-    if (processed) {
-      // Evento procesado correctamente - devolver 204 (No Content)
-      return res.status(204).send();
-    } else {
-      // No se pudo procesar - devolver 200 para evitar reintentos
-      return res.status(200).json({
+    // Si el evento viene con la estructura completa (topic/payload)
+    if (eventData && eventData.topic && eventData.payload) {
+      const listener = listeners[eventData.topic];
+      if (!listener) {
+        console.warn(`No hay listener registrado para el topic: ${eventData.topic}`);
+        return res.status(200).json({
+          success: false,
+          message: `Topic no soportado: ${eventData.topic}`
+        });
+      }
+      const processed = await listener.processEvent(eventData);
+      return processed ? res.status(204).send() : res.status(200).json({
         success: false,
         message: 'Evento no pudo ser procesado'
       });
     }
 
+    // Si el evento viene en formato simple (solo con id), asumimos que es iva.pedido
+    if (eventData && eventData.id) {
+      console.log('Procesando evento simple como iva.pedido');
+      const processed = await ivaPedidoListener.processEvent(eventData);
+      return processed ? res.status(204).send() : res.status(200).json({
+        success: false,
+        message: 'Evento no pudo ser procesado'
+      });
+    }
+
+    // Si no cumple ninguna estructura válida
+    console.warn('Evento recibido sin estructura válida:', eventData);
+    return res.status(200).json({
+      success: false,
+      message: 'Estructura de evento inválida'
+    });
+
   } catch (error) {
     console.error('Error procesando evento del hub:', error);
-    // Devolver 200 para evitar reintentos en caso de error
     return res.status(200).json({
       success: false,
       message: 'Error procesando evento'

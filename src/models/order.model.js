@@ -34,6 +34,39 @@ class OrderModel {
       client.release();
     }
   }
+
+  /**
+   * Obtiene una orden específica por su ID
+   * @param {number} orderId - ID de la orden
+   * @returns {Promise<Object|null>} Orden encontrada o null si no existe
+   */
+  static async getById(orderId) {
+    const client = await pool.connect();
+    
+    try {
+      const query = `
+        SELECT 
+          o.orden_id,
+          o.tenant_id,
+          o.comercio_id,
+          o.cliente_nombre,
+          o.medios_pago,
+          o.estado,
+          o.total,
+          o.direccion_entrega,
+          o.fecha_creacion,
+          o.fecha_actualizacion
+        FROM ordenes o
+        WHERE o.orden_id = $1
+      `;
+
+      const result = await client.query(query, [orderId]);
+      return result.rows[0] || null;
+
+    } finally {
+      client.release();
+    }
+  }
 }
 
 module.exports = OrderModel; 

@@ -6,16 +6,29 @@ const ivaPedidoHandler = require('../handlers/ivaPedidoHandler');
  */
 async function processEvent(event) {
   try {
-    // Validar que el evento tenga la estructura esperada
-    if (!event || !event.payload || !event.payload.orden_id) {
-      console.error('Evento iva.pedido inválido:', event);
-      return false;
+    console.log('Procesando evento iva.pedido:', JSON.stringify(event, null, 2));
+
+    // Si el evento viene directamente con id, lo procesamos
+    if (event && event.id) {
+      console.log('Procesando evento con estructura simple');
+      const result = await ivaPedidoHandler.handle(event);
+      return result;
     }
 
-    // Procesar el evento usando el handler
-    const result = await ivaPedidoHandler.handle(event.payload);
-    return result;
+    // Si el evento viene con la estructura topic/payload
+    if (event && event.topic && event.payload) {
+      console.log('Procesando evento con estructura topic/payload');
+      if (event.topic !== 'iva.pedido') {
+        console.error('Topic incorrecto:', event.topic);
+        return false;
+      }
+      const result = await ivaPedidoHandler.handle(event.payload);
+      return result;
+    }
 
+    // Si no cumple ninguna estructura válida
+    console.error('Estructura de evento inválida:', event);
+    return false;
   } catch (error) {
     console.error('Error procesando evento iva.pedido:', error);
     return false;

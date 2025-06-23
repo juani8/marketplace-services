@@ -1,4 +1,5 @@
 const { publishIvaResponse } = require('../publishers/ivaPublisher');
+const OrderModel = require('../../models/order.model');
 
 /**
  * Maneja el evento iva.pedido y responde con el cálculo de IVA
@@ -6,26 +7,41 @@ const { publishIvaResponse } = require('../publishers/ivaPublisher');
  */
 async function handle(eventData) {
   try {
-    const { pedidos } = eventData;
+    console.log('Procesando pedido para IVA:', eventData);
+    
+    // Obtener la orden de la base de datos
+    const order = await OrderModel.getById(eventData.id);
+    console.log('Orden encontrada:', order);
+    
+    if (!order) {
+      console.error(`No se encontró la orden con ID ${eventData.id}`);
+      return false;
+    }
 
-    // Procesar cada pedido y desglosar IVA
-    const pedidosConIva = pedidos.map(pedido => {
-      const total = parseFloat(pedido.total); // Usamos pedido.total que es el monto con IVA incluido
-      const subtotal = total / 1.21; // Como el total incluye IVA (21%), dividimos por 1.21
-      const montoIva = total - subtotal; // El IVA es la diferencia entre total y subtotal
-      
-      return {
-        pedido_id: pedido.pedido_id,
-        fecha: pedido.fecha,
-        subtotal: Number(subtotal.toFixed(2)), // Redondeamos a 2 decimales
-        montoIva: Number(montoIva.toFixed(2)),
-        total: total
-      };
-    });
+    // Procesar el pedido y desglosar IVA
+    const total = parseFloat(order.total);
+    const subtotal = total / 1.21; // Como el total incluye IVA (21%), dividimos por 1.21
+    const montoIva = total - subtotal;
+
+    const pedidoConIva = {
+      pedido_id: order.orden_id,
+      fecha: order.fecha_creacion,
+      subtotal: Number(subtotal.toFixed(2)),
+      montoIva: Number(montoIva.toFixed(2)),
+      total: total
+    };
+
+    console.log('Pedido procesado con IVA:', pedidoConIva);
 
     // Publicar respuesta con los cálculos
-    await publishIvaResponse(pedidosConIva);
+    const publishResult = await publishIvaResponse([pedidoConIva]);
+    
+    if (!publishResult) {
+      console.error('Error al publicar la respuesta IVA');
+      return false;
+    }
 
+    console.log('Respuesta IVA publicada exitosamente');
     return true;
   } catch (error) {
     console.error('Error procesando iva.pedido:', error);
