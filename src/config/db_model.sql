@@ -114,22 +114,37 @@ CREATE TABLE IF NOT EXISTS usuario_comercio (
 );
 
 CREATE TABLE IF NOT EXISTS ordenes (
-  orden_id SERIAL PRIMARY KEY,
+orden_id SERIAL PRIMARY KEY,
   tenant_id INTEGER REFERENCES tenants(tenant_id) ON DELETE CASCADE,
   comercio_id INTEGER REFERENCES comercios(comercio_id) ON DELETE CASCADE,
   cliente_nombre VARCHAR(150) NOT NULL,
-  estado VARCHAR(20) NOT NULL CHECK (estado IN ('pendiente', 'aceptada', 'rechazada', 'cancelada')),
+  medios_pago VARCHAR(10) NOT NULL CHECK (medios_pago IN ('fiat', 'crypto')),
+  estado VARCHAR(20) NOT NULL CHECK (
+                                    estado IN (
+                                    'pendiente', -- recibido de cliente
+                                    'aceptada', -- validado y stock reservado
+                                    'rechazada', -- no hay stock
+                                    'cancelada', -- delivery falló, recupero stock
+                                    'listo', -- pedido preparado
+                                    'finalizada' -- entregado
+                                    )
+                                    ),
   total NUMERIC(10,2) NOT NULL,
   direccion_entrega TEXT NOT NULL,
   fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   fecha_actualizacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+
 CREATE TABLE IF NOT EXISTS ordenes_productos (
   orden_id INTEGER REFERENCES ordenes(orden_id) ON DELETE CASCADE,
   producto_id INTEGER REFERENCES productos(producto_id) ON DELETE CASCADE,
+  promocion_id INTEGER REFERENCES promociones(promocion_id) ON DELETE SET NULL,
   precio_unitario NUMERIC(10,2) NOT NULL,
   cantidad INTEGER NOT NULL,
   subtotal NUMERIC(10,2) GENERATED ALWAYS AS (precio_unitario * cantidad) STORED,
   PRIMARY KEY (orden_id, producto_id)
 );
+
+
+

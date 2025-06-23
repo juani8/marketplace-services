@@ -1,5 +1,5 @@
 const TenantModel = require('../models/tenant.model');
-const { publishEvent } = require('../services/publisherService');
+const { publishEvent } = require('../events/utils/publishEvent');
 const { geocodeAddress } = require('../services/geocodingService');
 
 
