@@ -5,19 +5,19 @@ const { getTimestamp } = require('../utils/getTimestamp');
  * Publica el evento comercio.crear cuando se crea un nuevo comercio
  * @param {Object} comercio - El comercio creado
  */
-async function publishComercioCreated(comercio) {
+async function publishSellerCreated(seller) {
   const payload = {
     comercio: {
-      comercio_id: comercio.comercio_id,
-      tenant_id: comercio.tenant_id,
-      nombre: comercio.nombre,
-      lat: comercio.lat,
-      lon: comercio.lon,
-      calle: comercio.calle,
-      numero: comercio.numero,
-      ciudad: comercio.ciudad,
-      provincia: comercio.provincia,
-      codigo_postal: comercio.codigo_postal
+      comercio_id: seller.comercio_id,
+      tenant_id: seller.tenant_id,
+      nombre: seller.nombre,
+      lat: seller.lat,
+      lon: seller.lon,
+      calle: seller.calle,
+      numero: seller.numero,
+      ciudad: seller.ciudad,
+      provincia: seller.provincia,
+      codigo_postal: seller.codigo_postal
     },
     timestamp: getTimestamp()
   };
@@ -30,10 +30,10 @@ async function publishComercioCreated(comercio) {
  * @param {Object} comercio - El comercio actualizado
  * @param {Object} cambios - Los campos que fueron actualizados
  */
-async function publishComercioUpdated(comercio, cambios) {
+async function publishSellerUpdated(seller, cambios) {
   const payload = {
-    comercio_id: comercio.comercio_id,
-    tenant_id: comercio.tenant_id,
+    seller_id: seller.seller_id,
+    tenant_id: seller.tenant_id,
     cambios: cambios,
     timestamp: getTimestamp()
   };
@@ -42,6 +42,6 @@ async function publishComercioUpdated(comercio, cambios) {
 }
 
 module.exports = {
-  publishComercioCreated,
-  publishComercioUpdated
+  publishSellerCreated,
+  publishSellerUpdated
 };

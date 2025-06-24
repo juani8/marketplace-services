@@ -114,7 +114,7 @@ CREATE TABLE IF NOT EXISTS usuario_comercio (
 );
 
 CREATE TABLE IF NOT EXISTS ordenes (
-orden_id SERIAL PRIMARY KEY,
+  orden_id INTEGER PRIMARY KEY,
   tenant_id INTEGER REFERENCES tenants(tenant_id) ON DELETE CASCADE,
   comercio_id INTEGER REFERENCES comercios(comercio_id) ON DELETE CASCADE,
   cliente_nombre VARCHAR(150) NOT NULL,

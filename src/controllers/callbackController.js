@@ -1,5 +1,5 @@
 // Controlador para manejar callbacks del hub de eventos de core.deliver.ar
-const ivaPedidoListener = require('../events/subscribers/ivaPedidoListener');
+const ivaPedidoListener = require('../events/subscribers/ivaOrderListener');
 const obtenerVentasPorMesListener = require('../events/subscribers/obtenerVentasPorMesListener');
 const deliverySuccessfulListener = require('../events/subscribers/deliverySuccessfulListener');
 const deliveryFailedListener = require('../events/subscribers/deliveryFailedListener');
