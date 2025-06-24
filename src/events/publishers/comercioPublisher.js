@@ -6,8 +6,7 @@ const { getTimestamp } = require('../utils/getTimestamp');
  * @param {Object} comercio - El comercio creado
  */
 async function publishComercioCreated(comercio) {
-  const eventPayload = {
-    timestamp: getTimestamp(),
+  const payload = {
     comercio: {
       comercio_id: comercio.comercio_id,
       tenant_id: comercio.tenant_id,
@@ -19,10 +18,11 @@ async function publishComercioCreated(comercio) {
       ciudad: comercio.ciudad,
       provincia: comercio.provincia,
       codigo_postal: comercio.codigo_postal
-    }
+    },
+    timestamp: getTimestamp()
   };
 
-  await publishEvent('comercio.creado', eventPayload);
+  await publishEvent('comercio.creado', payload);
 }
 
 /**
@@ -31,14 +31,14 @@ async function publishComercioCreated(comercio) {
  * @param {Object} cambios - Los campos que fueron actualizados
  */
 async function publishComercioUpdated(comercio, cambios) {
-  const eventPayload = {
-    timestamp: getTimestamp(),
+  const payload = {
     comercio_id: comercio.comercio_id,
     tenant_id: comercio.tenant_id,
-    cambios: cambios
+    cambios: cambios,
+    timestamp: getTimestamp()
   };
 
-  await publishEvent('comercio.actualizado', eventPayload);
+  await publishEvent('comercio.actualizado', payload);
 }
 
 module.exports = {

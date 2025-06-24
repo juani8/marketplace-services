@@ -6,16 +6,16 @@ const { getTimestamp } = require('../utils/getTimestamp');
  * @param {Object} categoria - La categoría creada
  */
 async function publishCategoriaCreated(categoria) {
-  const eventPayload = {
-    timestamp: getTimestamp(),
+  const payload = {
     categoria: {
       categoria_id: categoria.categoria_id,
       tenant_id: categoria.tenant_id,
       nombre: categoria.nombre
-    }
+    },
+    timestamp: getTimestamp(),
   };
 
-  await publishEvent('categoria.creada', eventPayload);
+  await publishEvent('categoria.creada', payload);
 }
 
 module.exports = {

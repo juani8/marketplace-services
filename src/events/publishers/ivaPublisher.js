@@ -5,11 +5,9 @@ const publishEvent = require('../utils/publishEvent');
  * @param {Array} pedidos - Lista de pedidos con sus montos
  */
 async function publishIvaResponse(pedidos) {
-  console.log('Preparando respuesta IVA para pedidos:', pedidos);
-
-  const eventPayload = {
+  const payload = {
     pedidos: pedidos.map(pedido => ({
-      pedido_id: pedido.pedido_id,
+      pedidoId: pedido.pedido_id,
       fecha: pedido.fecha,
       subtotal: pedido.subtotal,
       montoIva: pedido.montoIva,
@@ -17,10 +15,7 @@ async function publishIvaResponse(pedidos) {
     }))
   };
 
-  console.log('Enviando respuesta IVA:', eventPayload);
-  const result = await publishEvent('iva.respuesta', eventPayload);
-  console.log('Resultado del envío de respuesta IVA:', result);
-  return result;
+  return await publishEvent('iva.respuesta', payload);
 }
 
 module.exports = {

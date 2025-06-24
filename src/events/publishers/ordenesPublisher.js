@@ -6,8 +6,7 @@ const { getTimestamp } = require('../utils/getTimestamp');
  * @param {Object} data - Datos de totales por tenant
  */
 async function publishTotalOrdenes(data) {
-  const eventPayload = {
-    timestamp: getTimestamp(),
+  const payload = {
     tenant_id: data.tenant_id,
     periodo: {
       desde: data.fecha_desde,
@@ -17,10 +16,11 @@ async function publishTotalOrdenes(data) {
       cantidad_ordenes: data.cantidad_ordenes,
       monto_total: data.monto_total,
       promedio_por_orden: data.promedio_por_orden
-    }
+    },
+    timestamp: getTimestamp(),
   };
 
-  await publishEvent('ordenes.total', eventPayload);
+  await publishEvent('ordenes.total', payload);
 }
 
 module.exports = {

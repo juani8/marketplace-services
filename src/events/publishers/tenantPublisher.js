@@ -6,8 +6,7 @@ const { getTimestamp } = require('../utils/getTimestamp');
  * @param {Object} tenant - El tenant creado
  */
 async function publishTenantCreated(tenant) {
-  const eventPayload = {
-    timestamp: getTimestamp(),
+  const payload = {
     tenant: {
       tenant_id: tenant.tenant_id,
       nombre: tenant.nombre,
@@ -23,10 +22,11 @@ async function publishTenantCreated(tenant) {
       },
       cuenta_bancaria: tenant.cuenta_bancaria,
       estado: tenant.estado
-    }
+    },
+    timestamp: getTimestamp()
   };
 
-  await publishEvent('tenant.crear', eventPayload);
+  await publishEvent('tenant.creado', payload);
 }
 
 /**
@@ -35,13 +35,13 @@ async function publishTenantCreated(tenant) {
  * @param {Object} cambios - Los campos que fueron actualizados
  */
 async function publishTenantUpdated(tenant, cambios) {
-  const eventPayload = {
-    timestamp: getTimestamp(),
+  const payload = {
     tenant_id: tenant.tenant_id,
-    cambios: cambios
+    cambios: cambios,
+    timestamp: getTimestamp()
   };
 
-  await publishEvent('tenant.actualizado', eventPayload);
+  await publishEvent('tenant.actualizado', payload);
 }
 
 /**
@@ -50,13 +50,13 @@ async function publishTenantUpdated(tenant, cambios) {
  * @param {string} nombre - Nombre del tenant eliminado
  */
 async function publishTenantDeleted(tenantId, nombre) {
-  const eventPayload = {
-    timestamp: getTimestamp(),
+  const payload = {
     tenant_id: tenantId,
-    nombre: nombre
+    nombre: nombre,
+    timestamp: getTimestamp()
   };
 
-  await publishEvent('tenant.eliminado', eventPayload);
+  await publishEvent('tenant.eliminado', payload);
 }
 
 module.exports = {
