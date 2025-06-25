@@ -7,22 +7,26 @@ const { getTimestamp } = require('../utils/getTimestamp');
  */
 async function publishTenantCreated(tenant) {
   const payload = {
-    tenant: {
-      tenant_id: tenant.tenant_id,
-      nombre: tenant.nombre,
-      razon_social: tenant.razon_social,
-      ubicacion: {
-        calle: tenant.calle,
-        numero: tenant.numero,
-        ciudad: tenant.ciudad,
-        provincia: tenant.provincia,
-        codigo_postal: tenant.codigo_postal,
-        lat: tenant.lat,
-        lon: tenant.lon
-      },
-      cuenta_bancaria: tenant.cuenta_bancaria,
-      estado: tenant.estado
+    tenant_id: tenant.tenant_id,
+    nombre: tenant.nombre,
+    razon_social: tenant.razon_social,
+    cuenta_bancaria: tenant.cuenta_bancaria,
+    email: tenant.email,
+    telefono: tenant.telefono,
+    direccion_fiscal: {
+      calle: tenant.calle,
+      numero: tenant.numero,
+      ciudad: tenant.ciudad,
+      provincia: tenant.provincia,
+      codigo_postal: tenant.codigo_postal,
+      lat: tenant.lat,
+      lon: tenant.lon
     },
+    sitio_web: tenant.sitio_web,
+    instagram: tenant.instagram,
+    estado: tenant.estado,
+    fecha_registro: tenant.fecha_registro,
+    fecha_actualizacion: tenant.fecha_actualizacion,
     timestamp: getTimestamp()
   };
 
@@ -35,9 +39,27 @@ async function publishTenantCreated(tenant) {
  * @param {Object} cambios - Los campos que fueron actualizados
  */
 async function publishTenantUpdated(tenant, cambios) {
+  // Restructure cambios if it contains ubicacion fields
+  const ubicacionFields = ['calle', 'numero', 'ciudad', 'provincia', 'codigo_postal', 'sitio_web', 'instagram', 'lat', 'lon'];
+  const ubicacionChanges = {};
+  const otherChanges = {};
+
+  for (const [key, value] of Object.entries(cambios)) {
+    if (ubicacionFields.includes(key)) {
+      ubicacionChanges[key] = value;
+    } else {
+      otherChanges[key] = value;
+    }
+  }
+
+  // Only include ubicacion in changes if there are ubicacion changes
+  if (Object.keys(ubicacionChanges).length > 0) {
+    otherChanges.ubicacion = ubicacionChanges;
+  }
+
   const payload = {
     tenant_id: tenant.tenant_id,
-    cambios: cambios,
+    cambios: otherChanges,
     timestamp: getTimestamp()
   };
 

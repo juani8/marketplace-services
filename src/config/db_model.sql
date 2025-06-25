@@ -84,10 +84,15 @@ CREATE TABLE IF NOT EXISTS datos_contacto (
   tenant_id     INTEGER REFERENCES tenants(tenant_id) ON DELETE CASCADE,
   email         VARCHAR(100),
   telefono      VARCHAR(20),
-  movil         VARCHAR(20),
-  direccion     VARCHAR(200),
+  calle VARCHAR(100),
+  numero VARCHAR(20),
+  ciudad VARCHAR(100),
+  provincia VARCHAR(100),
+  codigo_postal VARCHAR(10),
+  lat NUMERIC,
+  lon NUMERIC
   sitio_web     VARCHAR(100),
-  linkedin      VARCHAR(100),
+  instagram      VARCHAR(100),
   fecha_creacion TIMESTAMP    DEFAULT CURRENT_TIMESTAMP
 );
 
