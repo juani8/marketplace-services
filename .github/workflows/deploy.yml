@@ -38,6 +38,10 @@ jobs:
             export CLOUDINARY_API_SECRET="${{ secrets.CLOUDINARY_API_SECRET }}"
             export DATABASE_URL="${{ secrets.DATABASE_URL }}"
             export FRONTEND_URL="${{ secrets.FRONTEND_URL }}"
+            export JWT_SECRET="${{ secrets.JWT_SECRET }}"
+            export JWT_REFRESH_SECRET="${{ secrets.JWT_REFRESH_SECRET }}"
+            export JWT_ACCESS_EXPIRES_IN="${{ secrets.JWT_ACCESS_EXPIRES_IN }}"
+            export JWT_REFRESH_EXPIRES_IN="${{ secrets.JWT_REFRESH_EXPIRES_IN }}"
             chmod +x ~/deploy-backend.sh
             ~/deploy-backend.sh
 
