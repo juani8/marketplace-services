@@ -12,7 +12,7 @@ const { Readable } = require('stream');
 // Obtener todos los productos de un tenant
 async function getProducts(req, res) {
   try {
-    const tenantId = req.headers['x-tenant-id']; // tenantId, se deberia obtener del JWT cuando esté implementado.
+    const tenantId = req.user.tenant_id; // Obtenido del JWT
 
     // Obtenemos los productos del catálogo
     const productos = await ProductoModel.getProductsByTenantId(tenantId);
@@ -38,6 +38,11 @@ async function getProductById(req, res) {
     if (!producto) {
       return res.status(404).json({ message: 'Producto no encontrado' });
     }
+
+    // Verificar que el producto pertenece al tenant del usuario
+    if (producto.tenant_id !== req.user.tenant_id) {
+      return res.status(403).json({ message: 'No tienes permisos para acceder a este producto' });
+    }
     
     // Formateamos el producto
     const productosFormateados = await formatearProductos([producto]);
@@ -60,7 +65,7 @@ async function createProduct(req, res) {
       categoria_id
     } = req.body;
 
-    const tenantId = req.headers['x-tenant-id']; // tenantId, se deberia obtener del JWT cuando esté implementado.
+    const tenantId = req.user.tenant_id; // Obtenido del JWT
 
     // Validar datos requeridos
     if (!nombre_producto || !precio) {
@@ -120,6 +125,11 @@ async function updateProduct(req, res) {
       return res.status(404).json({ message: 'Producto no encontrado' });
     }
 
+    // Verificar que el producto pertenece al tenant del usuario
+    if (product.tenant_id !== req.user.tenant_id) {
+      return res.status(403).json({ message: 'No tienes permisos para modificar este producto' });
+    }
+
     // Procesar las nuevas imágenes si existen
     let imageUrls = [];
     if (req.files && req.files.length > 0) {
@@ -167,6 +177,11 @@ async function deleteProduct(req, res) {
     const product = await ProductoModel.getById(productId);
     if (!product) {
       return res.status(404).json({ message: 'Producto no encontrado' });
+    }
+
+    // Verificar que el producto pertenece al tenant del usuario
+    if (product.tenant_id !== req.user.tenant_id) {
+      return res.status(403).json({ message: 'No tienes permisos para eliminar este producto' });
     }
     
     // Guardamos la información necesaria para la respuesta

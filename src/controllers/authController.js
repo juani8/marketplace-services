@@ -102,7 +102,7 @@ const registerTenant = async (req, res) => {
 };
 
 const registerInternalUser = async (req, res) => {
-  const { tenant_id, nombre, email, password, rol, comercios_ids } = req.body;
+  const { nombre, email, password, rol, comercios_ids } = req.body;
 
   try {
     // Verificar que el usuario autenticado sea admin
@@ -112,12 +112,8 @@ const registerInternalUser = async (req, res) => {
       });
     }
 
-    // Verificar que el usuario autenticado pertenezca al mismo tenant
-    if (req.user.tenant_id !== tenant_id) {
-      return res.status(403).json({ 
-        message: 'No puedes crear usuarios para otros tenants' 
-      });
-    }
+    // Usar tenant_id del JWT en lugar del body
+    const tenant_id = req.user.tenant_id;
 
     const hashedPassword = await bcrypt.hash(password, 10);
 

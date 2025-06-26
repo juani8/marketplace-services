@@ -2,12 +2,13 @@
 const PromocionModel = require('../models/promocion.model');
 const ProductoModel = require('../models/producto.model');
 
-// TODO: Este ID se obtendrá del JWT cuando la autenticación esté implementada
-const TENANT_ID = 1;
+// TENANT_ID se obtiene del JWT en cada función
 
 // Crear una nueva promoción
 async function createPromotion(req, res) {
   try {
+    const TENANT_ID = req.user.tenant_id; // Obtenido del JWT
+    
     const {
       nombre,
       tipo_promocion,
@@ -99,6 +100,8 @@ async function createPromotion(req, res) {
 // Obtener todas las promociones del tenant
 async function getAllPromotions(req, res) {
   try {
+    const TENANT_ID = req.user.tenant_id; // Obtenido del JWT
+    
     const promociones = await PromocionModel.getAll(TENANT_ID);
     
     // Agregar productos a cada promoción
@@ -122,6 +125,8 @@ async function getAllPromotions(req, res) {
 // Actualizar promoción
 async function updatePromotion(req, res) {
   try {
+    const TENANT_ID = req.user.tenant_id; // Obtenido del JWT
+    
     const { promotionId } = req.params;
     const {
       nombre,
@@ -208,6 +213,8 @@ async function updatePromotion(req, res) {
 // Eliminar promoción
 async function deletePromotion(req, res) {
   try {
+    const TENANT_ID = req.user.tenant_id; // Obtenido del JWT
+    
     const { promotionId } = req.params;
     
     // Verificar que la promoción existe y pertenece al tenant

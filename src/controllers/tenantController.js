@@ -125,6 +125,11 @@ async function patchTenant(req, res) {
     const { tenantId } = req.params;
     const updateData = req.body;
 
+    // Solo permitir modificar el propio tenant
+    if (req.user.tenant_id !== parseInt(tenantId)) {
+      return res.status(403).json({ message: 'No tienes permisos para modificar este tenant' });
+    }
+
     if (Object.keys(updateData).length === 0) {
       return res.status(400).json({ message: 'No se enviaron campos para actualizar.' });
     }
