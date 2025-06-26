@@ -328,7 +328,48 @@ const OrderModel = {
     } finally {
       client.release();
     }
-  }
+  },
+
+  // Método para obtener órdenes finalizadas en un rango de fechas
+  async findFinalizadasByDateRange(fechaDesde, fechaHasta) {
+    try {
+      const query = `
+        SELECT 
+          o.orden_id,
+          o.comercio_id,
+          o.fecha_creacion,
+          o.total,
+          o.direccion_entrega,
+          json_agg(
+            json_build_object(
+              'producto_id', op.producto_id,
+              'nombre_producto', p.nombre_producto,
+              'cantidad', op.cantidad,
+              'precio_unitario', op.precio_unitario,
+              'subtotal', op.subtotal
+            )
+          ) as productos
+        FROM ordenes o
+        INNER JOIN ordenes_productos op ON o.orden_id = op.orden_id
+        INNER JOIN productos p ON op.producto_id = p.producto_id
+        WHERE o.estado = 'finalizada'
+        AND o.fecha_creacion BETWEEN $1 AND $2
+        GROUP BY 
+          o.orden_id,
+          o.comercio_id,
+          o.fecha_creacion,
+          o.total,
+          o.direccion_entrega
+        ORDER BY o.fecha_creacion ASC
+      `;
+
+      const result = await pool.query(query, [fechaDesde, fechaHasta]);
+      return result.rows;
+    } catch (error) {
+      console.error('Error en findFinalizadasByDateRange:', error);
+      throw error;
+    }
+  },
 };
 
 module.exports = OrderModel; 
