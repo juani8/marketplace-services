@@ -55,15 +55,8 @@ async function getSellersNearby(req, res) {
 // GET /sellers - Obtener comercios del tenant
 async function getComercios(req, res) {
   try {
-    const { usuario_id } = req.body;
+    const usuario_id = req.user.usuario_id; // Obtenido del JWT
     const { page = 1, size = 10 } = req.query;
-
-    if (!usuario_id) {
-      return res.status(400).json({
-        success: false,
-        message: 'usuario_id es requerido en el body'
-      });
-    }
 
     const pageNum = parseInt(page);
     const sizeNum = parseInt(size);
@@ -136,6 +129,22 @@ async function getComercioById(req, res) {
       });
     }
 
+    // Verificar que el comercio pertenece al tenant del usuario
+    if (comercio.tenant_id !== req.user.tenant_id) {
+      return res.status(403).json({
+        success: false,
+        message: 'No tienes permisos para acceder a este comercio'
+      });
+    }
+
+    // Si no es admin, verificar que el usuario tiene acceso a este comercio
+    if (req.user.rol !== 'admin' && !req.user.comercios_ids.includes(parseInt(id))) {
+      return res.status(403).json({
+        success: false,
+        message: 'No tienes permisos para acceder a este comercio'
+      });
+    }
+
     // Obtener y formatear horarios
     const horarios = await SellerModel.getHorarios(parseInt(id));
     comercio.horarios = formatearHorarios(horarios);
@@ -158,7 +167,6 @@ async function getComercioById(req, res) {
 async function createComercio(req, res) {
   try {
     const { 
-      tenant_id,
       nombre, 
       calle,
       numero,
@@ -168,11 +176,13 @@ async function createComercio(req, res) {
       horarios
     } = req.body;
 
+    const tenant_id = req.user.tenant_id; // Obtenido del JWT
+
     // Validaciones requeridas
-    if (!tenant_id || !nombre) {
+    if (!nombre) {
       return res.status(400).json({ 
         success: false,
-        message: 'tenant_id y nombre son campos requeridos' 
+        message: 'nombre es campo requerido' 
       });
     }
 
@@ -316,6 +326,22 @@ async function patchComercio(req, res) {
       });
     }
 
+    // Verificar que el comercio pertenece al tenant del usuario
+    if (existingComercio.tenant_id !== req.user.tenant_id) {
+      return res.status(403).json({
+        success: false,
+        message: 'No tienes permisos para modificar este comercio'
+      });
+    }
+
+    // Si no es admin, verificar que el usuario tiene acceso a este comercio
+    if (req.user.rol !== 'admin' && !req.user.comercios_ids.includes(parseInt(id))) {
+      return res.status(403).json({
+        success: false,
+        message: 'No tienes permisos para modificar este comercio'
+      });
+    }
+
     // Extraer horarios del update si están presentes
     const horarios = updateFields.horarios;
     delete updateFields.horarios;
@@ -424,6 +450,31 @@ async function deleteComercio(req, res) {
       });
     }
 
+    // Verificar que el comercio existe y obtener sus datos
+    const comercio = await SellerModel.getById(parseInt(id));
+    if (!comercio) {
+      return res.status(404).json({ 
+        success: false,
+        message: 'Comercio no encontrado' 
+      });
+    }
+
+    // Verificar que el comercio pertenece al tenant del usuario
+    if (comercio.tenant_id !== req.user.tenant_id) {
+      return res.status(403).json({
+        success: false,
+        message: 'No tienes permisos para eliminar este comercio'
+      });
+    }
+
+    // Si no es admin, verificar que el usuario tiene acceso a este comercio
+    if (req.user.rol !== 'admin' && !req.user.comercios_ids.includes(parseInt(id))) {
+      return res.status(403).json({
+        success: false,
+        message: 'No tienes permisos para eliminar este comercio'
+      });
+    }
+
     const comercioEliminado = await SellerModel.delete(parseInt(id));
 
     res.json({
@@ -471,6 +522,22 @@ async function getComercioProducts(req, res) {
       return res.status(404).json({ 
         success: false,
         message: 'Comercio no encontrado' 
+      });
+    }
+
+    // Verificar que el comercio pertenece al tenant del usuario
+    if (comercio.tenant_id !== req.user.tenant_id) {
+      return res.status(403).json({
+        success: false,
+        message: 'No tienes permisos para acceder a este comercio'
+      });
+    }
+
+    // Si no es admin, verificar que el usuario tiene acceso a este comercio
+    if (req.user.rol !== 'admin' && !req.user.comercios_ids.includes(comercioId)) {
+      return res.status(403).json({
+        success: false,
+        message: 'No tienes permisos para acceder a este comercio'
       });
     }
 
@@ -542,6 +609,22 @@ async function getProductStock(req, res) {
       return res.status(404).json({ 
         success: false,
         message: 'Comercio no encontrado' 
+      });
+    }
+
+    // Verificar que el comercio pertenece al tenant del usuario
+    if (comercio.tenant_id !== req.user.tenant_id) {
+      return res.status(403).json({
+        success: false,
+        message: 'No tienes permisos para acceder a este comercio'
+      });
+    }
+
+    // Si no es admin, verificar que el usuario tiene acceso a este comercio
+    if (req.user.rol !== 'admin' && !req.user.comercios_ids.includes(comercioId)) {
+      return res.status(403).json({
+        success: false,
+        message: 'No tienes permisos para acceder a este comercio'
       });
     }
 
@@ -637,6 +720,22 @@ async function updateProductStock(req, res) {
       return res.status(404).json({ 
         success: false,
         message: 'Comercio no encontrado' 
+      });
+    }
+
+    // Verificar que el comercio pertenece al tenant del usuario
+    if (comercio.tenant_id !== req.user.tenant_id) {
+      return res.status(403).json({
+        success: false,
+        message: 'No tienes permisos para acceder a este comercio'
+      });
+    }
+
+    // Si no es admin, verificar que el usuario tiene acceso a este comercio
+    if (req.user.rol !== 'admin' && !req.user.comercios_ids.includes(comercioId)) {
+      return res.status(403).json({
+        success: false,
+        message: 'No tienes permisos para acceder a este comercio'
       });
     }
 

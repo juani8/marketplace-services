@@ -28,10 +28,9 @@ const ProductoModel = {
           nombre_producto, 
           descripcion, 
           precio, 
-          cantidad_stock, 
           categoria_id
         ) 
-        VALUES ($1, $2, $3, $4, $5, $6) 
+        VALUES ($1, $2, $3, $4, $5) 
         RETURNING *
       `;
       
@@ -40,7 +39,6 @@ const ProductoModel = {
         productoData.nombre_producto,
         productoData.descripcion,
         productoData.precio,
-        productoData.cantidad_stock,
         productoData.categoria_id
       ];
 
@@ -59,7 +57,7 @@ const ProductoModel = {
       const { imagenes, ...productoData } = updateData;
 
       // Construimos la query dinámicamente solo con los campos válidos
-      const validFields = ['nombre_producto', 'descripcion', 'precio', 'cantidad_stock', 'categoria_id'];
+      const validFields = ['nombre_producto', 'descripcion', 'precio', 'categoria_id'];
       const updates = Object.keys(productoData)
         .filter(key => validFields.includes(key) && productoData[key] !== undefined)
         .map((key, index) => `${key} = $${index + 2}`);
@@ -107,6 +105,98 @@ const ProductoModel = {
     `;
     const res = await pool.query(query, [producto_id]);
     return res.rows;
+  },
+
+  // Método específico para eventos: actualiza y detecta campos cambiados
+  async updateForEvent(productoId, updateData) {
+    try {
+      // Obtener el producto actual para comparar cambios
+      const productoPrevio = await this.getById(productoId);
+      if (!productoPrevio) {
+        throw new Error('Producto no encontrado');
+      }
+
+      // Extraemos imagenes del updateData para no intentar actualizarlas en la tabla productos
+      const { imagenes, ...productoData } = updateData;
+
+      // Construimos la query dinámicamente solo con los campos válidos
+      const validFields = ['nombre_producto', 'descripcion', 'precio', 'categoria_id'];
+      const updates = Object.keys(productoData)
+        .filter(key => validFields.includes(key) && productoData[key] !== undefined)
+        .map((key, index) => `${key} = $${index + 2}`);
+
+      // Detectar campos cambiados
+      const camposCambiados = [];
+      validFields.forEach(campo => {
+        if (productoData[campo] !== undefined && productoData[campo] !== productoPrevio[campo]) {
+          camposCambiados.push(campo);
+        }
+      });
+
+      // Detectar cambios en imágenes si se proporcionaron
+      if (updateData.imagenes !== undefined) {
+        camposCambiados.push('imagenes');
+      }
+
+      let productoActualizado = productoPrevio;
+
+      // Solo actualizar si hay campos válidos para actualizar
+      if (updates.length > 0) {
+        const query = `
+          UPDATE productos 
+          SET ${updates.join(', ')} 
+          WHERE producto_id = $1 
+          RETURNING *
+        `;
+
+        const values = [productoId, ...Object.values(productoData)
+          .filter((_, index) => validFields.includes(Object.keys(productoData)[index]))];
+
+        const result = await pool.query(query, values);
+        productoActualizado = result.rows[0];
+      }
+
+      return {
+        producto: productoActualizado,
+        campos_cambiados: camposCambiados
+      };
+    } catch (error) {
+      console.error('Error en updateForEvent:', error);
+      throw error;
+    }
+  },
+
+  // Método para obtener producto completo con toda su información para eventos
+  async getCompleteById(producto_id) {
+    try {
+      // Obtener información básica del producto
+      const query = `
+        SELECT 
+          p.*,
+          c.nombre as nombre_categoria
+        FROM productos p
+        LEFT JOIN categorias c ON p.categoria_id = c.categoria_id
+        WHERE p.producto_id = $1
+      `;
+      
+      const result = await pool.query(query, [producto_id]);
+      if (result.rows.length === 0) {
+        return null;
+      }
+
+      const producto = result.rows[0];
+      
+      // Obtener promociones
+      const promociones = await this.getPromociones(producto_id);
+
+      return {
+        ...producto,
+        promociones: promociones
+      };
+    } catch (error) {
+      console.error('Error en getCompleteById:', error);
+      throw error;
+    }
   },
 
   // Método para agregar una nueva imagen a un producto

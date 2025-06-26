@@ -1,8 +1,5 @@
 const TenantModel = require('../models/tenant.model');
-const { publishEvent } = require('../services/publisherService');
 const { geocodeAddress } = require('../services/geocodingService');
-
-
 
 async function getAllTenants(req, res) {
   try {
@@ -11,7 +8,6 @@ async function getAllTenants(req, res) {
     page = parseInt(page);
     size = parseInt(size);
 
-    // Validaciones para evitar 0 o negativos
     if (isNaN(page) || page < 1) page = 1;
     if (isNaN(size) || size < 1) size = 10;
 
@@ -29,32 +25,52 @@ async function getAllTenants(req, res) {
     });
   } catch (error) {
     console.error('Error getting tenants:', error);
-    res.status(500).json({ message: 'Internal server error' });
+    if (!res.headersSent) {
+      res.status(500).json({ message: 'Internal server error' });
+    }
   }
 }
 
 async function createTenant(req, res) {
   try {
-    const { 
-      nombre, 
-      razon_social, 
-      cuenta_bancaria, 
+    const {
+      nombre,
+      razon_social,
+      cuenta_bancaria,
+      email,
+      telefono,
       calle,
       numero,
       ciudad,
       provincia,
       codigo_postal,
-      horario_apertura,
-      horario_cierre, 
+      sitio_web,
+      instagram
     } = req.body;
 
-    if (!nombre || !razon_social || !calle || !numero || !ciudad || !provincia) {
-      return res.status(400).json({ 
-        message: 'Nombre, razón social y dirección completa (calle, numero, ciudad, provincia) son obligatorios.' 
+    // Validar campos obligatorios
+    const requiredFields = [
+      'nombre',
+      'razon_social',
+      'cuenta_bancaria',
+      'email',
+      'telefono',
+      'calle',
+      'numero',
+      'ciudad',
+      'provincia',
+      'codigo_postal'
+    ];
+
+    const missingFields = requiredFields.filter(field => !req.body[field]);
+
+    if (missingFields.length > 0) {
+      return res.status(400).json({
+        message: `Los siguientes campos son obligatorios: ${missingFields.join(', ')}`
       });
     }
 
-    // Geocodificamos la dirección
+    // Geocodificar la dirección
     let lat, lon;
     try {
       const location = await geocodeAddress({
@@ -67,15 +83,21 @@ async function createTenant(req, res) {
       lat = location.lat;
       lon = location.lon;
     } catch (geoError) {
-      return res.status(400).json({ 
-        message: 'Dirección inválida o no encontrada. Por favor verifica los datos ingresados.' 
+      return res.status(400).json({
+        message: 'Dirección inválida o no encontrada. Por favor verifica los datos ingresados.'
       });
     }
 
-    const newTenant = await TenantModel.create({
+    // Separar datos para las diferentes tablas
+    const tenantData = {
       nombre,
       razon_social,
-      cuenta_bancaria,
+      cuenta_bancaria
+    };
+
+    const contactData = {
+      email,
+      telefono,
       calle,
       numero,
       ciudad,
@@ -83,31 +105,32 @@ async function createTenant(req, res) {
       codigo_postal,
       lat,
       lon,
-      horario_apertura,
-      horario_cierre,
-      estado: 'activo'
-    });
+      sitio_web,
+      instagram
+    };
 
+    const newTenant = await TenantModel.create(tenantData, contactData);
     res.status(201).json(newTenant);
-
-    await publishEvent('alta_tenant_iniciada', {
-      tenant_id: newTenant.tenant_id,
-      nombre: newTenant.nombre
-    });
 
   } catch (error) {
     console.error('Error creating tenant:', error);
-    res.status(500).json({ message: 'Internal server error' });
+    if (!res.headersSent) {
+      res.status(500).json({ message: 'Internal server error' });
+    }
   }
 }
-
 
 async function patchTenant(req, res) {
   try {
     const { tenantId } = req.params;
-    let updateFields = req.body;
+    const updateData = req.body;
 
-    if (!updateFields || Object.keys(updateFields).length === 0) {
+    // Solo permitir modificar el propio tenant
+    if (req.user.tenant_id !== parseInt(tenantId)) {
+      return res.status(403).json({ message: 'No tienes permisos para modificar este tenant' });
+    }
+
+    if (Object.keys(updateData).length === 0) {
       return res.status(400).json({ message: 'No se enviaron campos para actualizar.' });
     }
 
@@ -117,65 +140,80 @@ async function patchTenant(req, res) {
       return res.status(404).json({ message: 'Tenant no encontrado.' });
     }
 
-    // Si se actualiza algún campo de dirección, necesitamos todos los campos para geocodificar
-    if (updateFields.calle || updateFields.numero || updateFields.ciudad || updateFields.provincia || updateFields.codigo_postal) {
-      const direccion = {
-        calle: updateFields.calle || existingTenant.calle,
-        numero: updateFields.numero || existingTenant.numero,
-        ciudad: updateFields.ciudad || existingTenant.ciudad,
-        provincia: updateFields.provincia || existingTenant.provincia,
-        codigo_postal: updateFields.codigo_postal || existingTenant.codigo_postal
-      };
+    // Separar los campos según la tabla correspondiente
+    const tenantFields = {};
+    const contactFields = {};
 
-      const { lat, lon } = await geocodeAddress(direccion);
-      updateFields = {
-        ...updateFields,
-        lat,
-        lon
-      };
-    }
-
-    // Actualizar el tenant solo con los campos enviados
-    const updatedTenant = await TenantModel.patch(tenantId, updateFields);
-
-    await publishEvent('modificacion_tenant', {
-      tenant_id: updatedTenant.tenant_id,
-      nombre: updatedTenant.nombre
+    // Campos que pertenecen a la tabla tenant
+    ['nombre', 'razon_social', 'cuenta_bancaria'].forEach(field => {
+      if (updateData[field] !== undefined) {
+        tenantFields[field] = updateData[field];
+      }
     });
 
+    // Campos que pertenecen a la tabla datos_contacto
+    ['email', 'telefono', 'calle', 'numero', 'ciudad', 'provincia', 
+     'codigo_postal', 'sitio_web', 'instagram'].forEach(field => {
+      if (updateData[field] !== undefined) {
+        contactFields[field] = updateData[field];
+      }
+    });
+
+    // Si hay cambios en cualquier campo de dirección, recalcular lat/lon
+    if (contactFields.calle || contactFields.numero || contactFields.ciudad || 
+        contactFields.provincia || contactFields.codigo_postal) {
+      
+      // Combinar datos existentes con actualizaciones para geocodificación
+      const addressToGeocode = {
+        calle: contactFields.calle || existingTenant.calle,
+        numero: contactFields.numero || existingTenant.numero,
+        ciudad: contactFields.ciudad || existingTenant.ciudad,
+        provincia: contactFields.provincia || existingTenant.provincia,
+        codigo_postal: contactFields.codigo_postal || existingTenant.codigo_postal
+      };
+
+      try {
+        const { lat, lon } = await geocodeAddress(addressToGeocode);
+        contactFields.lat = lat;
+        contactFields.lon = lon;
+      } catch (geoError) {
+        return res.status(400).json({
+          message: 'Dirección inválida o no encontrada. Por favor verifica los datos ingresados.'
+        });
+      }
+    }
+
+    const updatedTenant = await TenantModel.patch(tenantId, tenantFields, contactFields);
     res.json(updatedTenant);
+
   } catch (error) {
-    console.error('Error actualizando parcialmente tenant:', error);
-    res.status(500).json({ message: 'Error interno del servidor.' });
+    console.error('Error actualizando tenant:', error);
+    if (!res.headersSent) {
+      res.status(500).json({ message: 'Error interno del servidor.' });
+    }
   }
 }
-
-
 
 async function deleteTenant(req, res) {
   try {
     const { tenantId } = req.params;
 
-    // Buscar el tenant primero
     const existingTenant = await TenantModel.getById(tenantId);
     if (!existingTenant) {
       return res.status(404).json({ message: 'Tenant no encontrado.' });
     }
 
-    // Eliminar
     await TenantModel.delete(tenantId);
-
-    // Publicar evento de baja
-    await publishEvent('baja_tenant_iniciada', {
-      tenant_id: tenantId,
-      nombre: existingTenant.nombre
+    res.status(200).json({ 
+      message: 'Tenant eliminado',
+      tenant_id: parseInt(tenantId)
     });
 
-    // Responder con 204 No Content
-    res.status(204).send();
   } catch (error) {
     console.error('Error eliminando tenant:', error);
-    res.status(500).json({ message: 'Error interno del servidor.' });
+    if (!res.headersSent) {
+      res.status(500).json({ message: 'Error interno del servidor.' });
+    }
   }
 }
 

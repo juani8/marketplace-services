@@ -1,6 +1,6 @@
-# 🛠️ Backend Marketplace - Node.js + Express + PostgreSQL
+# 🛠️ Backend Marketplace - Node.js + Express + PostgreSQL + JWT
 
-Este proyecto es un backend desarrollado con **Node.js** y **Express**, utilizando una base de datos **PostgreSQL** desplegada en **Render**. Está diseñado para gestionar múltiples comercios (tenants) y sus respectivos catálogos, productos y promociones.
+Este proyecto es un backend desarrollado con **Node.js** y **Express**, utilizando una base de datos **PostgreSQL** desplegada en **Render**. Está diseñado para gestionar múltiples comercios (tenants) y sus respectivos catálogos, productos y promociones con **autenticación JWT**.
 
 ---
 
@@ -22,22 +22,36 @@ Este proyecto es un backend desarrollado con **Node.js** y **Express**, utilizan
 
 ---
 
+## 🔐 Autenticación JWT
+
+Este proyecto implementa **autenticación JWT completa** en todos los endpoints (excepto autenticación y callbacks públicos). 
+
+### Características:
+- ✅ **Token Bearer**: Todos los endpoints requieren `Authorization: Bearer <token>`
+- ✅ **Multi-tenant**: Usuarios aislados por tenant
+- ✅ **Roles**: Admin (acceso completo) y Operador (acceso limitado)
+- ✅ **Permisos granulares**: Control de acceso por comercio
+- ✅ **Refresh tokens**: Sistema de renovación de tokens
+- ✅ **Autorización automática**: Los datos se filtran por tenant/usuario automáticamente
+
+---
+
 ## 📦 Instalación de dependencias
 
-Este proyecto requiere las siguientes dependencias:
-
-- `dotenv`: Manejo de variables de entorno.
-- `cors`: Habilita peticiones cross-origin desde el frontend.
-- `morgan`: Middleware de logging.
-- `pg`: Cliente de PostgreSQL para Node.js.
-- `nodemon`: Recarga automática del servidor durante el desarrollo.
-- `multer`: Manejo de subida de archivos.
-- `cloudinary`: Servicio de almacenamiento de imágenes en la nube.
-
-Instalarlas mediante el siguiente comando:
 ```bash
 npm install
 ```
+
+**Dependencias principales:**
+- `dotenv`: Manejo de variables de entorno
+- `cors`: Habilita peticiones cross-origin desde el frontend
+- `morgan`: Middleware de logging
+- `pg`: Cliente de PostgreSQL para Node.js
+- `nodemon`: Recarga automática del servidor durante el desarrollo
+- `multer`: Manejo de subida de archivos
+- `cloudinary`: Servicio de almacenamiento de imágenes en la nube
+- `jsonwebtoken`: Manejo de tokens JWT para autenticación
+- `bcryptjs`: Hashing de contraseñas
 
 ---
 
@@ -53,7 +67,647 @@ DATABASE_URL=postgres://user:password@host:port/database
 CLOUDINARY_CLOUD_NAME=your_cloud_name
 CLOUDINARY_API_KEY=your_api_key
 CLOUDINARY_API_SECRET=your_api_secret
+
+# JWT Secrets (generar con crypto.randomBytes(64).toString('hex'))
+JWT_SECRET=your_jwt_secret_128_chars
+JWT_REFRESH_SECRET=your_refresh_secret_128_chars
 ```
+
+---
+
+## 🔑 Autenticación JWT
+
+Todos los endpoints (excepto autenticación y callbacks) requieren un token JWT válido en el header:
+
+```bash
+Authorization: Bearer <tu_jwt_token>
+```
+
+### Estructura del Token JWT:
+```json
+{
+  "usuario_id": 1,
+  "tenant_id": 1,
+  "nombre": "Juan Pérez",
+  "email": "juan@ejemplo.com",
+  "rol": "admin",
+  "tenant_nombre": "Mi Negocio",
+  "comercios_ids": [1, 2, 3]
+}
+```
+
+---
+
+## 📋 API Endpoints
+
+### 🔐 Autenticación
+
+#### POST /api/auth/login
+**Descripción:** Iniciar sesión
+**Autenticación:** ❌ No requiere
+**Body requerido:**
+```json
+{
+  "email": "admin@ejemplo.com",
+  "password": "tu_password"
+}
+```
+**Respuesta exitosa:**
+```json
+{
+  "message": "Login exitoso",
+  "user": {
+    "usuario_id": 1,
+    "nombre": "Juan Pérez",
+    "email": "admin@ejemplo.com",
+    "rol": "admin"
+  },
+  "tenant_id": 1,
+  "tokens": {
+    "accessToken": "eyJhbGciOiJIUzI1NiIs...",
+    "refreshToken": "eyJhbGciOiJIUzI1NiIs..."
+  }
+}
+```
+
+#### POST /api/auth/register-tenant
+**Descripción:** Crear nuevo tenant con usuario admin
+**Autenticación:** ❌ No requiere
+**Body requerido:**
+```json
+{
+  "nombre": "Mi Negocio",
+  "razon_social": "Mi Negocio S.A.",
+  "cuenta_bancaria": "1234567890",
+  "email": "admin@ejemplo.com",
+  "telefono": "1234567890",
+  "calle": "Av. Corrientes",
+  "numero": "1234",
+  "ciudad": "Buenos Aires",
+  "provincia": "CABA",
+  "codigo_postal": "1043",
+  "nombre_usuario": "Juan Pérez",
+  "password": "mi_password",
+  "sitio_web": "https://miweb.com",
+  "instagram": "@miweb"
+}
+```
+
+#### POST /api/auth/register-internal
+**Descripción:** Crear usuario interno (admins pueden hacer esto únicamente)
+**Autenticación:** ✅ Requiere (Admin)
+**Body requerido:**
+```json
+{
+  "nombre": "María García",
+  "email": "maria@ejemplo.com",
+  "password": "password123",
+  "rol": "operador",
+  "comercios_ids": [1, 2]
+}
+```
+
+#### POST /api/auth/refresh
+**Descripción:** Renovar tokens JWT
+**Autenticación:** ❌ No requiere
+**Body requerido:**
+```json
+{
+  "refreshToken": "eyJhbGciOiJIUzI1NiIs..."
+}
+```
+
+#### GET /api/auth/profile
+**Descripción:** Obtener perfil del usuario autenticado
+**Autenticación:** ✅ Requiere
+**Body:** ❌ No requiere
+**Respuesta exitosa:**
+```json
+{
+  "success": true,
+  "data": {
+    "usuario_id": 1,
+    "tenant_id": 1,
+    "nombre": "Juan Pérez",
+    "email": "admin@ejemplo.com",
+    "rol": "admin",
+    "tenant": {
+      "nombre": "Mi Negocio",
+      "razon_social": "Mi Negocio S.A.",
+      "estado": "activo"
+    },
+    "comercios": [
+      {"comercio_id": 1, "nombre": "Sucursal Centro"},
+      {"comercio_id": 2, "nombre": "Sucursal Norte"}
+    ]
+  }
+}
+```
+
+---
+
+### 🏢 Tenants
+
+#### GET /api/tenants
+**Descripción:** Obtener tenants (admin ve su propio tenant)
+**Autenticación:** ✅ Requiere (Admin)
+**Body:** ❌ No requiere
+**Query params:** `page=1&size=10`
+**Respuesta exitosa:**
+```json
+{
+  "data": [
+    {
+      "tenant_id": 1,
+      "nombre": "Mi Negocio",
+      "razon_social": "Mi Negocio S.A.",
+      "cuenta_bancaria": "1234567890",
+      "email": "admin@ejemplo.com",
+      "telefono": "1234567890",
+      "calle": "Av. Corrientes",
+      "numero": "1234",
+      "ciudad": "Buenos Aires",
+      "provincia": "CABA",
+      "codigo_postal": "1043"
+    }
+  ],
+  "pagination": {
+    "totalItems": 1,
+    "totalPages": 1,
+    "currentPage": 1
+  }
+}
+```
+
+#### POST /api/tenants
+**Descripción:** Crear nuevo tenant
+**Autenticación:** ✅ Requiere (Super Admin)
+**Body requerido:**
+```json
+{
+  "nombre": "Nuevo Negocio",
+  "razon_social": "Nuevo Negocio S.A.",
+  "cuenta_bancaria": "9876543210",
+  "email": "nuevo@ejemplo.com",
+  "telefono": "9876543210",
+  "calle": "Av. Santa Fe",
+  "numero": "5678",
+  "ciudad": "Buenos Aires",
+  "provincia": "CABA",
+  "codigo_postal": "1425"
+}
+```
+
+#### PATCH /api/tenants/:tenantId
+**Descripción:** Actualizar tenant (solo el propio)
+**Autenticación:** ✅ Requiere (Admin del mismo tenant)
+**Body:** Campos opcionales para actualizar
+```json
+{
+  "nombre": "Nuevo Nombre",
+  "telefono": "1111111111"
+}
+```
+
+#### DELETE /api/tenants/:tenantId
+**Descripción:** Eliminar tenant (solo el propio)
+**Autenticación:** ✅ Requiere (Admin del mismo tenant)
+**Body:** ❌ No requiere
+**Respuesta exitosa:**
+```json
+{
+  "message": "Tenant eliminado",
+  "tenant_id": 1
+}
+```
+
+---
+
+### 🏪 Sellers (Comercios)
+
+#### GET /api/sellers
+**Descripción:** Obtener comercios del tenant O buscar cercanos
+**Autenticación:** ✅ Requiere
+**Body:** ❌ No requiere
+**Query params opcionales:**
+- Sin params: Lista comercios del tenant
+- `lat=-34.6037&lon=-58.3816`: Busca comercios cercanos (5km)
+- `page=1&size=10`: Paginación (solo para lista del tenant)
+
+**Respuesta (lista del tenant):**
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "comercio_id": 1,
+      "tenant_id": 1,
+      "nombre": "Sucursal Centro",
+      "calle": "Av. Corrientes",
+      "numero": "1234",
+      "ciudad": "Buenos Aires",
+      "provincia": "CABA",
+      "codigo_postal": "1043",
+      "lat": -34.6037,
+      "lon": -58.3816,
+      "horarios": [
+        {
+          "dia_semana": 1,
+          "dia_nombre": "Lunes",
+          "hora_apertura": "09:00",
+          "hora_cierre": "18:00",
+          "estado": "activo"
+        }
+      ]
+    }
+  ],
+  "pagination": {
+    "page": 1,
+    "size": 10,
+    "totalItems": 5,
+    "totalPages": 1
+  }
+}
+```
+
+#### GET /api/sellers/:id
+**Descripción:** Obtener comercio específico
+**Autenticación:** ✅ Requiere
+**Body:** ❌ No requiere
+**Respuesta exitosa:**
+```json
+{
+  "success": true,
+  "data": {
+    "comercio_id": 1,
+    "tenant_id": 1,
+    "nombre": "Sucursal Centro",
+    "calle": "Av. Corrientes",
+    "numero": "1234",
+    "ciudad": "Buenos Aires",
+    "horarios": [...]
+  }
+}
+```
+
+#### POST /api/sellers
+**Descripción:** Crear nuevo comercio
+**Autenticación:** ✅ Requiere
+**Body requerido:**
+```json
+{
+  "nombre": "Nueva Sucursal",
+  "calle": "Av. Santa Fe",
+  "numero": "5678",
+  "ciudad": "Buenos Aires",
+  "provincia": "CABA",
+  "codigo_postal": "1425",
+  "horarios": [
+    {
+      "dia_semana": 1,
+      "hora_apertura": "09:00",
+      "hora_cierre": "18:00"
+    }
+  ]
+}
+```
+
+#### PATCH /api/sellers/:id
+**Descripción:** Actualizar comercio
+**Autenticación:** ✅ Requiere (acceso al comercio)
+**Body:** Campos opcionales para actualizar
+```json
+{
+  "nombre": "Nuevo Nombre",
+  "horarios": [
+    {
+      "dia_semana": 1,
+      "hora_apertura": "08:00",
+      "hora_cierre": "19:00"
+    }
+  ]
+}
+```
+
+#### DELETE /api/sellers/:id
+**Descripción:** Eliminar comercio
+**Autenticación:** ✅ Requiere (acceso al comercio)
+**Body:** ❌ No requiere
+
+---
+
+### 📦 Productos
+
+#### GET /api/products
+**Descripción:** Obtener productos del tenant
+**Autenticación:** ✅ Requiere
+**Body:** ❌ No requiere
+**Respuesta exitosa:**
+```json
+[
+  {
+    "producto_id": 1,
+    "tenant_id": 1,
+    "nombre_producto": "Pizza Margherita",
+    "descripcion": "Pizza clásica con tomate y mozzarella",
+    "precio": 850.50,
+    "categoria_id": 1,
+    "categoria_nombre": "Pizzas",
+    "imagenes": [
+      {
+        "imagen_id": 1,
+        "url": "https://res.cloudinary.com/.../image.jpg",
+        "descripcion": "Imagen principal"
+      }
+    ],
+    "promociones": []
+  }
+]
+```
+
+#### GET /api/products/:productId
+**Descripción:** Obtener producto específico
+**Autenticación:** ✅ Requiere
+**Body:** ❌ No requiere
+
+#### POST /api/products
+**Descripción:** Crear nuevo producto
+**Autenticación:** ✅ Requiere
+**Body requerido (multipart/form-data):**
+```json
+{
+  "nombre_producto": "Pizza Margherita",
+  "descripcion": "Pizza clásica con tomate y mozzarella",
+  "precio": 850.50,
+  "categoria_id": 1
+}
+```
+**Files:** `imagenes` (máximo 5 imágenes)
+
+#### PATCH /api/products/:productId
+**Descripción:** Actualizar producto
+**Autenticación:** ✅ Requiere (producto del mismo tenant)
+**Body:** Campos opcionales para actualizar (multipart/form-data)
+
+#### DELETE /api/products/:productId
+**Descripción:** Eliminar producto
+**Autenticación:** ✅ Requiere (producto del mismo tenant)
+**Body:** ❌ No requiere
+**Respuesta exitosa:**
+```json
+{
+  "message": "Producto eliminado exitosamente",
+  "deleted_product": {
+    "tenant_id": 1,
+    "producto_id": 1,
+    "nombre_producto": "Pizza Margherita"
+  }
+}
+```
+
+#### GET /api/products/csv/template
+**Descripción:** Obtener template CSV para carga masiva
+**Autenticación:** ✅ Requiere
+**Body:** ❌ No requiere
+
+#### POST /api/products/csv/upload
+**Descripción:** Subir CSV con productos (solo admins)
+**Autenticación:** ✅ Requiere (Admin)
+**Body:** File CSV
+**Content-Type:** multipart/form-data
+
+---
+
+### 🏪 Stock de Comercios
+
+#### GET /api/sellers/:id/products
+**Descripción:** Obtener productos con stock del comercio
+**Autenticación:** ✅ Requiere (acceso al comercio)
+**Body:** ❌ No requiere
+**Respuesta exitosa:**
+```json
+{
+  "success": true,
+  "data": {
+    "comercio": {
+      "comercio_id": 1,
+      "nombre": "Sucursal Centro",
+      "tenant_id": 1
+    },
+    "productos": [
+      {
+        "producto_id": 1,
+        "nombre_producto": "Pizza Margherita",
+        "precio": 850.50,
+        "cantidad_stock": 25,
+        "imagenes": [...],
+        "promociones": [...]
+      }
+    ]
+  }
+}
+```
+
+#### GET /api/sellers/:id/products/:productId/stock
+**Descripción:** Obtener stock específico de un producto
+**Autenticación:** ✅ Requiere (acceso al comercio)
+**Body:** ❌ No requiere
+
+#### PATCH /api/sellers/:id/products/:productId/stock
+**Descripción:** Actualizar stock de un producto
+**Autenticación:** ✅ Requiere (acceso al comercio)
+**Body requerido:**
+```json
+{
+  "cantidad_stock": 30
+}
+```
+
+---
+
+### 🏷️ Categorías
+
+#### GET /api/categories
+**Descripción:** Obtener categorías con productos del tenant
+**Autenticación:** ✅ Requiere
+**Body:** ❌ No requiere
+**Respuesta exitosa:**
+```json
+[
+  {
+    "categoria_id": 1,
+    "nombre": "Pizzas",
+    "descripcion": "Pizzas artesanales",
+    "fecha_creacion": "2024-01-15T10:30:00.000Z"
+  },
+  {
+    "categoria_id": 2,
+    "nombre": "Hamburguesas",
+    "descripcion": "Hamburguesas gourmet",
+    "fecha_creacion": "2024-01-15T10:35:00.000Z"
+  }
+]
+```
+
+#### GET /api/categories/:categoriaId
+**Descripción:** Obtener categoría específica
+**Autenticación:** ✅ Requiere
+**Body:** ❌ No requiere
+
+#### POST /api/categories
+**Descripción:** Crear nueva categoría (solo admins)
+**Autenticación:** ✅ Requiere (Admin)
+**Body requerido:**
+```json
+{
+  "nombre": "Bebidas",
+  "descripcion": "Bebidas frías y calientes"
+}
+```
+
+#### PATCH /api/categories/:categoriaId
+**Descripción:** Actualizar categoría (solo admins con productos asociados)
+**Autenticación:** ✅ Requiere (Admin)
+**Body:** Campos opcionales para actualizar
+```json
+{
+  "nombre": "Nuevo Nombre",
+  "descripcion": "Nueva descripción"
+}
+```
+
+#### DELETE /api/categories/:categoriaId
+**Descripción:** Eliminar categoría (solo admins sin productos asociados)
+**Autenticación:** ✅ Requiere (Admin)
+**Body:** ❌ No requiere
+
+---
+
+### 🎯 Promociones
+
+#### GET /api/promotions
+**Descripción:** Obtener promociones del tenant
+**Autenticación:** ✅ Requiere
+**Body:** ❌ No requiere
+**Respuesta exitosa:**
+```json
+[
+  {
+    "promocion_id": 1,
+    "nombre": "2x1 en Pizzas",
+    "tipo_promocion": "porcentaje",
+    "valor_descuento": 50.00,
+    "fecha_inicio": "2024-01-15T00:00:00.000Z",
+    "fecha_fin": "2024-01-31T23:59:59.000Z",
+    "productos": [
+      {
+        "producto_id": 1,
+        "nombre_producto": "Pizza Margherita",
+        "precio": 850.50
+      }
+    ]
+  }
+]
+```
+
+#### POST /api/promotions
+**Descripción:** Crear nueva promoción
+**Autenticación:** ✅ Requiere
+**Body requerido:**
+```json
+{
+  "nombre": "2x1 en Pizzas",
+  "tipo_promocion": "porcentaje",
+  "valor_descuento": 50.00,
+  "lista_productos": [1, 2, 3],
+  "fecha_inicio": "2024-01-15T00:00:00.000Z",
+  "fecha_fin": "2024-01-31T23:59:59.000Z"
+}
+```
+
+#### PATCH /api/promotions/:promotionId
+**Descripción:** Actualizar promoción
+**Autenticación:** ✅ Requiere
+**Body:** Campos opcionales para actualizar
+
+#### DELETE /api/promotions/:promotionId
+**Descripción:** Eliminar promoción
+**Autenticación:** ✅ Requiere
+**Body:** ❌ No requiere
+
+---
+
+### 📋 Órdenes
+
+#### GET /api/orders/:comercio_id
+**Descripción:** Obtener órdenes de un comercio
+**Autenticación:** ✅ Requiere (acceso al comercio)
+**Body:** ❌ No requiere
+**Respuesta exitosa:**
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "orden_id": 1,
+      "tenant_id": 1,
+      "comercio_id": 1,
+      "cliente_nombre": "Juan Pérez",
+      "medios_pago": "fiat",
+      "estado": "pendiente",
+      "total": 1250.75,
+      "direccion_entrega": "Av. Corrientes 1234, CABA",
+      "fecha_creacion": "2024-01-15T14:30:00.000Z"
+    }
+  ]
+}
+```
+
+---
+
+### 🔗 Callbacks (Sin Autenticación)
+
+#### GET /callback
+**Descripción:** Verificación de suscripción del hub de eventos
+**Autenticación:** ❌ No requiere (endpoint público)
+**Body:** ❌ No requiere
+**Query params:** `topic` y `challenge`
+
+#### POST /callback
+**Descripción:** Recepción de eventos del hub
+**Autenticación:** ❌ No requiere (endpoint público)
+**Body:** Estructura de evento
+```json
+{
+  "event": "tipo.evento",
+  "data": {...}
+}
+```
+
+---
+
+## 🔒 Autorización por Roles
+
+### Admin
+- Puede acceder a todos los recursos de su tenant
+- Puede crear/modificar/eliminar categorías y promociones
+- Puede crear usuarios internos
+- Puede gestionar todos los comercios de su tenant
+
+### Operador
+- Solo puede acceder a comercios asignados
+- Puede gestionar productos y stock de sus comercios
+- No puede crear/eliminar categorías o promociones
+
+---
+
+## 🚨 Códigos de Error Comunes
+
+- `401`: Token JWT faltante o inválido
+- `403`: Sin permisos para acceder al recurso
+- `404`: Recurso no encontrado
+- `400`: Datos inválidos en el body
+- `500`: Error interno del servidor
 
 ---
 
@@ -62,821 +716,58 @@ CLOUDINARY_API_SECRET=your_api_secret
 ```bash
 src/
 │
-├── config/           # Configuración general (base de datos, variables de entorno)
+├── config/           # Configuración general
 │   ├── db_connection.js
 │   ├── db_model.sql
-│   ├── db_init_model.js
-│   ├── db_exec_drop_tables.js
-│   └── multerConfig.js      # Configuración de multer para subida de imágenes
+│   ├── multerConfig.js
+│   └── csvMulterConfig.js
 │
-├── controllers/      # Controladores con la lógica de negocio
+├── controllers/      # Controladores con lógica de negocio
+│   ├── authController.js      # Autenticación JWT
 │   ├── tenantController.js
-│   ├── catalogController.js
 │   ├── productController.js
-│   ├── promotionsController.js
+│   ├── sellerController.js
 │   ├── categoriesController.js
-│   └── sellerController.js
+│   ├── promotionsController.js
+│   ├── orderController.js
+│   └── callbackController.js
 │
-├── middlewares/      # Middlewares personalizados (próximamente)
+├── middlewares/      # Middlewares de autenticación
+│   └── authMiddleware.js      # JWT y validaciones
 │
 ├── models/           # Modelos de datos
+│   ├── user.model.js
 │   ├── tenant.model.js
-│   ├── catalogo.model.js
 │   ├── producto.model.js
+│   ├── seller.model.js
+│   ├── categoria.model.js
 │   ├── promocion.model.js
-│   └── categoria.model.js
+│   └── order.model.js
 │
 ├── routes/           # Rutas HTTP
+│   ├── authRoutes.js
 │   ├── tenantRoutes.js
-│   ├── catalogRoutes.js
 │   ├── productRoutes.js
-│   ├── promotionsRoutes.js
+│   ├── sellerRoutes.js
 │   ├── categoriesRoutes.js
-│   └── sellerRoutes.js
+│   ├── promotionsRoutes.js
+│   ├── orderRoutes.js
+│   └── callbackRoutes.js
 │
-├── services/         # Servicios externos y utilidades
+├── services/         # Servicios externos
+│   ├── jwtService.js          # Manejo de tokens JWT
 │   ├── geocodingService.js
-│   ├── publisherService.js
-│   └── imageUploadService.js  # Servicio de subida de imágenes a Cloudinary
+│   ├── imageUploadService.js
+│   └── timeServices.js
 │
-├── utils/           # Utilidades y helpers
+├── events/           # Sistema de eventos
+│   ├── handlers/
+│   ├── publishers/
+│   ├── subscribers/
+│   └── utils/
+│
+├── utils/           # Utilidades
 │   └── formatters.js
 │
-└── app.js             # Configuración, uso de middlewares y punto de entrada del servidor
-```
-
----
-
-## 🌐 Conexión segura a la base de datos en Render
-
-Render exige el uso de conexiones **SSL seguras**. Por eso, en `db.js` se debe incluir:
-
-```js
-ssl: {
-  rejectUnauthorized: false
-}
-```
-
-> ⚠️ Este bloque es **obligatorio**. No eliminar.
-
----
-
-## 📋 Estructura de la base de datos
-
-A continuación se detalla el modelo relacional utilizado en la base de datos PostgreSQL:
-
-### 🏢 Tenants
-
-| Columna                  | Tipo                         | Nullable |
-|---------------------------|------------------------------|----------|
-| tenant_id                 | integer (PK)                 | NO       |
-| nombre                    | varchar(100)                 | NO       |
-| razon_social              | varchar(150)                 | SÍ       |
-| cuenta_bancaria           | varchar(100)                 | SÍ       |
-| calle                     | varchar(100)                 | SÍ       |
-| numero                    | varchar(20)                  | SÍ       |
-| ciudad                    | varchar(100)                 | SÍ       |
-| provincia                 | varchar(100)                 | SÍ       |
-| codigo_postal             | varchar(10)                  | SÍ       |
-| lon                       | numeric(9,6)                 | SÍ       |
-| lat                       | numeric(9,6)                 | SÍ       |
-| configuracion_operativa   | jsonb                        | SÍ       |
-| estado                    | varchar(20)                  | SÍ       |
-| fecha_registro            | timestamp without time zone  | SÍ       |
-| fecha_actualizacion       | timestamp without time zone  | SÍ       |
-
----
-
-### 📦 Catálogos
-
-| Columna           | Tipo                         | Nullable |
-|-------------------|------------------------------|----------|
-| catalogo_id       | integer (PK)                 | NO       |
-| tenant_id         | integer                      | SÍ       |
-| fecha_actualizacion | timestamp without time zone | SÍ       |
-
----
-
-### 🛂 Productos
-
-| Columna         | Tipo                         | Nullable |
-|-----------------|------------------------------|----------|
-| producto_id     | integer (PK)                 | NO       |
-| catalogo_id     | integer                      | SÍ       |
-| nombre_producto | text                         | NO       |
-| descripcion     | text                         | SÍ       |
-| precio          | numeric                      | SÍ       |
-| cantidad_stock  | integer                      | SÍ       |
-| categoria       | text                         | SÍ       |
-| imagenes        | array                        | SÍ       |
-| fecha_creacion  | timestamp without time zone  | SÍ       |
-
----
-
-### 🏱️ Promociones
-
-| Columna         | Tipo                         | Nullable |
-|-----------------|------------------------------|----------|
-| promocion_id    | integer (PK)                 | NO       |
-| nombre          | varchar(100)                 | NO       |
-| tipo_promocion  | varchar(20)                  | NO       |
-| valor_descuento | numeric(10,2)                | NO       |
-| fecha_inicio    | timestamp                    | NO       |
-| fecha_fin       | timestamp                    | NO       |
-
----
-
-### 🔗 Promociones - Productos
-
-| Columna       | Tipo     | Nullable |
-|---------------|----------|----------|
-| promocion_id  | integer  | NO       |
-| producto_id   | integer  | NO       |
-
----
-
-### 📸 Imágenes de Producto
-
-| Columna         | Tipo                         | Nullable |
-|-----------------|------------------------------|----------|
-| imagen_id       | integer (PK)                 | NO       |
-| producto_id     | integer (FK)                 | NO       |
-| url             | varchar(255)                 | NO       |
-| descripcion     | varchar(255)                 | SÍ       |
-| fecha_creacion  | timestamp                    | NO       |
-
----
-
-## 🌍 Despliegue en Render
-
-Este proyecto fue desplegado de la siguiente forma:
-
-- **Backend**: Node.js + Express, desplegado como Web Service.
-- **Base de Datos**: PostgreSQL, desplegada como servicio de base de datos en Render.
-
-Todos los servicios se comunican entre sí utilizando HTTPS y conexiones seguras.
-
----
-
-## 📄 Endpoints - API
-
-### 🏢 **Tenants**
-
-#### `GET /api/tenants`
-
-Obtiene una lista paginada de todos los tenants registrados.
-
-#####  Query Parameters
-
-| Parámetro | Tipo    | Opcional | Descripción |
-|:-----------|:--------|:---------|:------------|
-| page       | integer | Sí       | Número de página (default: 1) |
-| size       | integer | Sí       | Tamaño de página (default: 10) |
-
-##### 📄 Ejemplo de respuesta
-
-```json
-{
-  "data": [
-    {
-      "tenant_id": 1,
-      "nombre": "Supermercado La Plaza",
-      "razon_social": "La Plaza SRL",
-      "cuenta_bancaria": "123-456-789",
-      "direccion": "Av. Siempre Viva 742",
-      "lat": -34.603722,
-      "lon": -58.381592,
-      "configuracion_operativa": {},
-      "estado": "activo",
-      "fecha_registro": "2025-04-27T15:00:00.000Z",
-      "fecha_actualizacion": "2025-04-27T15:00:00.000Z",
-      "email": "contacto@laplaza.com",
-      "telefono": "011-1234-5678",
-      "movil": "11-6543-2109",
-      "direccion_contacto": "Sucursal 1, CABA",
-      "sitio_web": "https://laplaza.com",
-      "linkedin": "https://linkedin.com/company/laplaza"
-    }
-  ],
-  "pagination": {
-    "totalItems": 42,
-    "totalPages": 5,
-    "currentPage": 2
-  }
-}
-```
-
----
-
-#### `POST /api/tenants`
-
-Crea un nuevo tenant.
-
-- La dirección se geocodifica automáticamente a lat/lon.
-
-#####  Body esperado
-
-| Campo                     | Tipo     | Obligatorio | Descripción                                                  |
-|:---------------------------|:---------|:------------|:-------------------------------------------------------------|
-| `nombre`                   | string   | Sí          | Nombre del tenant (comercio o empresa).                      |
-| `razon_social`             | string   | Sí          | Razón social registrada del tenant.                         |
-| `cuenta_bancaria`          | string   | No          | Cuenta bancaria asociada (opcional).                         |
-| `direccion`                | string   | No          | Dirección física del tenant (opcional).                      |
-| `configuracion_operativa`  | JSON     | No          | Configuraciones internas (horarios de atención, políticas, etc). |
-
-
-```json
-{
-  "nombre": "Supermercado La Plaza",
-  "razon_social": "La Plaza SRL",
-  "cuenta_bancaria": "123-456-789",
-  "direccion": "Av. Corrientes 1000, CABA, Argentina",
-  "configuracion_operativa": {
-    "horario_apertura": "09:00",
-    "horario_cierre": "18:00"
-  }
-}
-```
-
----
-
-#### `PATCH /api/tenants/:tenantId`
-
-Actualiza parcialmente los datos de un tenant existente.
-
-##### 📥 Body
-
-Debe enviarse un JSON con **uno o más** de los siguientes campos:
-
-| Campo                     | Tipo     | Obligatorio | Descripción                                                  |
-|:---------------------------|:---------|:------------|:-------------------------------------------------------------|
-| `nombre`                   | string   | No           | Nombre del tenant (comercio o empresa).                      |
-| `razon_social`             | string   | No           | Razón social registrada del tenant.                         |
-| `cuenta_bancaria`          | string   | No           | Cuenta bancaria asociada (opcional).                         |
-| `direccion`                | string   | No           | Dirección física del tenant (opcional).                      |
-| `configuracion_operativa`  | JSON     | No           | Configuraciones internas (horarios de atención, políticas, etc.). |
-
-
-**Ejemplo de body (actualización parcial):**
-
-```json
-{
-  "nombre": "Nuevo Nombre Actualizado",
-  "cuenta_bancaria": "999-888-777"
-}
-```
-
-#### `DELETE /api/tenants/:tenantId`
-
-Elimina un tenant.
-
-- Emite evento `baja_tenant_iniciada`.
-- Respuesta: **204 No Content**
-
----
-
-### 🛂 **Sellers (consulta de tenants cercanos)**
-
-#### `GET /api/sellers?lat={lat}&lon={lon}`
-
-Devuelve sellers cercanos según la ubicación del cliente.
-
-- Radio de entrega de 5 km.
-- Ordenado de **más cercano a más lejano**.
-
-#####  Query Parameters
-
-| Parámetro | Tipo    | Obligatorio | Descripción |
-|:-----------|:--------|:------------|:------------|
-| lat        | decimal | Sí          | Latitud cliente |
-| lon        | decimal | Sí          | Longitud cliente |
-
-##### 📄 Ejemplo de respuesta
-
-```json
-[
-  {
-    "tenant_id": 13,
-    "nombre": "Café Obelisco",
-    "direccion": "Av. Corrientes 1100, CABA",
-    "lat": -34.603500,
-    "lon": -58.381000,
-    "configuracion_operativa": {
-      "tipo": "cafetería"
-    },
-    "estado": "activo",
-    "distance_km": 0.0595
-  }
-]
-```
-
-### 📦 **Catálogos**
-
-#### `GET /api/sellers/:sellerId/catalogs`
-
-Obtiene todos los catálogos de un seller específico.
-
-##### Parámetros de URL
-| Parámetro | Tipo    | Obligatorio | Descripción |
-|:----------|:--------|:------------|:------------|
-| sellerId  | integer | Sí          | ID del seller |
-
-##### 📄 Ejemplo de respuesta
-```json
-[
-  {
-    "catalogo_id": "1",
-    "tenant_id": "1",
-    "productos": [
-      {
-        "producto_id": "1",
-        "nombre_producto": "Pizza Margherita",
-        "descripcion": "Pizza con salsa de tomate, mozzarella y albahaca",
-        "precio": 3500,
-        "cantidad_stock": 20,
-        "categoria": "Pizzas",
-        "imagenes": [
-          "https://res.cloudinary.com/your-cloud/image/upload/v1234/marketplace/pizza-margherita.jpg"
-        ],
-        "promociones": [
-          {
-            "promocion_id": "1",
-            "tenant_id": "1",
-            "nombre": "2x1 en Pizzas",
-            "descripcion": "Llevá 2 pizzas al precio de 1",
-            "tipo_promocion": "2x1",
-            "fecha_inicio": "2024-03-27T15:00:00.000Z",
-            "fecha_fin": "2024-04-27T15:00:00.000Z",
-            "productos_incluidos": ["1"],
-            "estado": "activa"
-          }
-        ]
-      }
-    ],
-    "fecha_actualizacion": "2024-03-27T15:00:00.000Z"
-  }
-]
-```
-
----
-
-#### `GET /api/catalogs/:catalogId`
-
-Obtiene un catálogo específico por su ID.
-
-##### Parámetros de URL
-| Parámetro | Tipo    | Obligatorio | Descripción |
-|:----------|:--------|:------------|:------------|
-| catalogId | integer | Sí          | ID del catálogo |
-
-##### 📄 Ejemplo de respuesta
-```json
-{
-  "catalogo_id": "1",
-  "tenant_id": "1",
-  "productos": [],
-  "fecha_actualizacion": "2024-03-27T15:00:00.000Z"
-}
-```
-
----
-
-#### `POST /api/sellers/:sellerId/catalogs`
-
-Crea un nuevo catálogo para un seller.
-
-##### Parámetros de URL
-| Parámetro | Tipo    | Obligatorio | Descripción |
-|:----------|:--------|:------------|:------------|
-| sellerId  | integer | Sí          | ID del seller |
-
-##### 📄 Ejemplo de respuesta
-```json
-{
-  "catalogo_id": "1",
-  "tenant_id": "1",
-  "productos": [],
-  "fecha_actualizacion": "2024-03-27T15:00:00.000Z"
-}
-```
-
----
-
-#### `DELETE /api/catalogs/:catalogId`
-
-Elimina un catálogo específico.
-
-##### Parámetros de URL
-| Parámetro | Tipo    | Obligatorio | Descripción |
-|:----------|:--------|:------------|:------------|
-| catalogId | integer | Sí          | ID del catálogo |
-
-##### 📄 Ejemplo de respuesta
-```json
-{
-  "message": "Catálogo ID 1 del seller ID 1 fue eliminado exitosamente",
-  "deleted_catalog": {
-    "catalogo_id": "1",
-    "tenant_id": "1"
-  }
-}
-```
-
----
-
-#### `GET /api/catalogs/:catalogId/products`
-
-Obtiene todos los productos de un catálogo específico.
-
-##### Parámetros de URL
-| Parámetro | Tipo    | Obligatorio | Descripción |
-|:----------|:--------|:------------|:------------|
-| catalogId | integer | Sí          | ID del catálogo |
-
-##### 📄 Ejemplo de respuesta
-```json
-[
-  {
-    "producto_id": "1",
-    "nombre_producto": "Pizza Margherita",
-    "descripcion": "Pizza con salsa de tomate, mozzarella y albahaca",
-    "precio": 3500,
-    "cantidad_stock": 20,
-    "categoria": "Pizzas",
-    "imagenes": [
-      "https://res.cloudinary.com/your-cloud/image/upload/v1234/marketplace/pizza-margherita.jpg"
-    ],
-    "promociones": []
-  }
-]
-```
-
----
-
-### 🛍️ **Productos**
-
-#### `GET /api/products`
-
-Obtiene todos los productos del tenant actual.
-
-##### 📄 Ejemplo de respuesta
-```json
-[
-  {
-    "producto_id": "1",
-    "nombre_producto": "Pizza Margherita",
-    "descripcion": "Pizza con salsa de tomate, mozzarella y albahaca",
-    "precio": 3500,
-    "cantidad_stock": 20,
-    "categoria": {
-      "categoria_id": "1",
-      "nombre": "Pizzas",
-      "descripcion": "Pizzas tradicionales"
-    },
-    "imagenes": [
-      "https://res.cloudinary.com/your-cloud/image/upload/v1234/marketplace/pizza-margherita.jpg"
-    ],
-    "promociones": []
-  }
-]
-```
-
-#### `GET /api/products/:productId`
-
-Obtiene un producto específico por su ID.
-
-##### Parámetros de URL
-| Parámetro | Tipo    | Obligatorio | Descripción |
-|:----------|:--------|:------------|:------------|
-| productId | integer | Sí          | ID del producto |
-
-##### 📄 Ejemplo de respuesta
-```json
-{
-  "producto_id": "1",
-  "nombre_producto": "Pizza Margherita",
-  "descripcion": "Pizza con salsa de tomate, mozzarella y albahaca",
-  "precio": 3500,
-  "cantidad_stock": 20,
-  "categoria": {
-    "categoria_id": "1",
-    "nombre": "Pizzas",
-    "descripcion": "Pizzas tradicionales"
-  },
-  "imagenes": [
-    "https://res.cloudinary.com/your-cloud/image/upload/v1234/marketplace/pizza-margherita.jpg"
-  ],
-  "promociones": []
-}
-```
-
-#### `POST /api/products`
-
-Crea un nuevo producto.
-
-##### Multipart Form Data
-| Campo           | Tipo           | Obligatorio | Descripción |
-|:----------------|:---------------|:------------|:------------|
-| nombre_producto | string         | Sí          | Nombre del producto |
-| descripcion     | string         | No          | Descripción del producto |
-| precio          | number         | Sí          | Precio del producto |
-| cantidad_stock  | number         | No          | Cantidad en stock |
-| categoria_id    | integer        | No          | ID de la categoría |
-| imagenes        | file (máx. 5)  | No          | Archivos de imagen (máx. 5MB c/u) |
-
-##### 📄 Ejemplo de respuesta
-```json
-{
-  "message": "Producto creado exitosamente",
-  "producto": {
-    "producto_id": "2",
-    "nombre_producto": "Pizza Especial",
-    "descripcion": "Pizza con jamón, morrón, huevo y aceitunas",
-    "precio": 4300,
-    "cantidad_stock": 50,
-    "categoria": {
-      "categoria_id": "1",
-      "nombre": "Pizzas",
-      "descripcion": "Pizzas tradicionales"
-    },
-    "imagenes": [
-      "https://res.cloudinary.com/your-cloud/image/upload/v1234/marketplace/image1.jpg",
-      "https://res.cloudinary.com/your-cloud/image/upload/v1234/marketplace/image2.jpg"
-    ],
-    "promociones": []
-  }
-}
-```
-
-#### `PATCH /api/products/:productId`
-
-Actualiza parcialmente un producto específico.
-
-##### Parámetros de URL
-| Parámetro | Tipo    | Obligatorio | Descripción |
-|:----------|:--------|:------------|:------------|
-| productId | integer | Sí          | ID del producto |
-
-##### Multipart Form Data
-| Campo           | Tipo           | Obligatorio | Descripción |
-|:----------------|:---------------|:------------|:------------|
-| nombre_producto | string         | No          | Nombre del producto |
-| descripcion     | string         | No          | Descripción del producto |
-| precio          | number         | No          | Precio del producto |
-| cantidad_stock  | number         | No          | Cantidad en stock |
-| categoria_id    | integer        | No          | ID de la categoría |
-| imagenes        | file (máx. 5)  | No          | Archivos de imagen (máx. 5MB c/u) |
-
-##### 📄 Ejemplo de respuesta
-```json
-{
-  "message": "Producto actualizado exitosamente",
-  "producto": {
-    "producto_id": "2",
-    "nombre_producto": "Pizza Especial Actualizada",
-    "descripcion": "Pizza con jamón, morrón, huevo y aceitunas negras",
-    "precio": 4500,
-    "cantidad_stock": 45,
-    "categoria": {
-      "categoria_id": "1",
-      "nombre": "Pizzas",
-      "descripcion": "Pizzas tradicionales"
-    },
-    "imagenes": [
-      "https://res.cloudinary.com/your-cloud/image/upload/v1234/marketplace/new-image1.jpg"
-    ],
-    "promociones": []
-  }
-}
-```
-
-> ⚠️ **Nota sobre las imágenes**: Al actualizar un producto con nuevas imágenes, las imágenes anteriores serán eliminadas y reemplazadas por las nuevas. Si no se envían nuevas imágenes, las existentes se mantendrán sin cambios.
-
----
-
-#### `DELETE /api/products/:productId`
-
-Elimina un producto específico.
-
-##### Parámetros de URL
-| Parámetro | Tipo    | Obligatorio | Descripción |
-|:----------|:--------|:------------|:------------|
-| productId | integer | Sí          | ID del producto |
-
-##### 📄 Ejemplo de respuesta
-```json
-{
-  "message": "Producto eliminado exitosamente",
-  "deleted_product": {
-    "tenant_id": "1",
-    "producto_id": "2",
-    "nombre_producto": "Pizza Especial"
-  }
-}
-```
-
-### 📑 **Categorías**
-
-#### `GET /api/categories`
-
-Obtiene todas las categorías disponibles.
-
-##### 📄 Ejemplo de respuesta
-```json
-[
-  {
-    "categoria_id": 1,
-    "nombre": "Pizzas",
-    "descripcion": "Pizzas tradicionales",
-    "fecha_creacion": "2024-03-27T15:00:00.000Z"
-  },
-  {
-    "categoria_id": 2,
-    "nombre": "Bebidas",
-    "descripcion": "Bebidas frías y calientes",
-    "fecha_creacion": "2024-03-27T15:00:00.000Z"
-  }
-]
-```
-
-#### `GET /api/categories/:categoriaId`
-
-Obtiene una categoría específica por su ID.
-
-##### Parámetros de URL
-| Parámetro   | Tipo    | Obligatorio | Descripción |
-|:------------|:--------|:------------|:------------|
-| categoriaId | integer | Sí          | ID de la categoría |
-
-##### 📄 Ejemplo de respuesta
-```json
-{
-  "categoria_id": 1,
-  "nombre": "Pizzas",
-  "descripcion": "Pizzas tradicionales",
-  "fecha_creacion": "2024-03-27T15:00:00.000Z"
-}
-```
-
-#### `POST /api/categories`
-
-Crea una nueva categoría.
-
-##### Body (JSON)
-| Campo      | Tipo   | Obligatorio | Descripción |
-|:-----------|:-------|:------------|:------------|
-| nombre     | string | Sí          | Nombre de la categoría |
-| descripcion| string | No          | Descripción de la categoría |
-
-##### 📄 Ejemplo de respuesta
-```json
-{
-  "categoria_id": 3,
-  "nombre": "Postres",
-  "descripcion": "Postres caseros",
-  "fecha_creacion": "2024-03-27T15:00:00.000Z"
-}
-```
-
-#### `DELETE /api/categories/:categoriaId`
-
-Elimina una categoría específica.
-
-##### Parámetros de URL
-| Parámetro   | Tipo    | Obligatorio | Descripción |
-|:------------|:--------|:------------|:------------|
-| categoriaId | integer | Sí          | ID de la categoría |
-
-##### 📄 Ejemplo de respuesta
-```json
-{
-  "message": "Categoría 3 eliminada correctamente"
-}
-```
-
-### 🎯 **Promociones**
-
-#### `GET /api/promotions`
-
-Obtiene todas las promociones del tenant ID que trae el JWT.
-
-##### 📄 Ejemplo de respuesta
-```json
-[
-  {
-    "promocion_id": 1,
-    "nombre": "2x1 en Hamburguesas",
-    "tipo_promocion": "porcentaje",
-    "valor_descuento": 50,
-    "fecha_inicio": "2024-03-20T00:00:00.000Z",
-    "fecha_fin": "2024-04-20T00:00:00.000Z",
-    "productos": [
-      {
-        "producto_id": 1,
-        "nombre_producto": "Hamburguesa Clásica",
-        "precio": 1500,
-        "descripcion": "Hamburguesa con queso y lechuga",
-        // ... otros campos del producto
-      }
-    ]
-  }
-]
-```
-
----
-
-#### `POST /api/promotions`
-
-Crea una nueva promoción.
-
-##### Body esperado
-```json
-{
-  "nombre": "2x1 en Hamburguesas",
-  "tipo_promocion": "porcentaje",
-  "valor_descuento": 50,
-  "fecha_inicio": "2024-03-20",
-  "fecha_fin": "2024-04-20",
-  "lista_productos": [1, 2] // IDs de productos existentes del tenant
-}
-```
-
-##### 📄 Ejemplo de respuesta (201 Created)
-```json
-{
-  "message": "Promoción creada exitosamente",
-  "promocion": {
-    "promocion_id": 1,
-    "nombre": "2x1 en Hamburguesas",
-    "tipo_promocion": "porcentaje",
-    "valor_descuento": 50,
-    "fecha_inicio": "2024-03-20T00:00:00.000Z",
-    "fecha_fin": "2024-04-20T00:00:00.000Z",
-    "productos": [
-      {
-        "producto_id": 1,
-        "nombre_producto": "Hamburguesa Clásica",
-        // ... detalles del producto
-      }
-    ]
-  }
-}
-```
-
----
-
-#### `PATCH /api/promotions/:promotionId`
-
-Actualiza parcialmente una promoción existente.
-
-##### Body esperado (campos opcionales)
-```json
-{
-  "nombre": "3x2 en Hamburguesas",
-  "tipo_promocion": "porcentaje",
-  "valor_descuento": 33.33,
-  "fecha_inicio": "2024-03-20",
-  "fecha_fin": "2024-04-20",
-  "lista_productos": [1, 2, 3]
-}
-```
-
-##### 📄 Ejemplo de respuesta
-```json
-{
-  "message": "Promoción actualizada exitosamente",
-  "promocion": {
-    "promocion_id": 1,
-    "nombre": "3x2 en Hamburguesas",
-    "tipo_promocion": "porcentaje",
-    "valor_descuento": 33.33,
-    "fecha_inicio": "2024-03-20T00:00:00.000Z",
-    "fecha_fin": "2024-04-20T00:00:00.000Z",
-    "productos": [
-      // Lista actualizada de productos
-    ]
-  }
-}
-```
-
----
-
-#### `DELETE /api/promotions/:promotionId`
-
-Elimina una promoción específica.
-
-##### 📄 Ejemplo de respuesta
-```json
-{
-  "message": "Promoción eliminada exitosamente",
-  "deleted_promotion_id": "1"
-}
-```
-
-##### Notas importantes:
-- El campo `tipo_promocion` solo acepta "monto" o "porcentaje"
-- `valor_descuento` representa el porcentaje de descuento o el monto fijo según el tipo
-- `fecha_inicio` debe ser anterior a `fecha_fin`
-- Solo se pueden asociar productos que pertenezcan al mismo tenant
-- Las fechas deben enviarse en formato ISO (YYYY-MM-DD)
+└── app.js             # Punto de entrada del servidor
 ```
