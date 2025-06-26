@@ -57,7 +57,6 @@ async function createProduct(req, res) {
       nombre_producto, 
       descripcion, 
       precio, 
-      cantidad_stock, 
       categoria_id
     } = req.body;
 
@@ -80,7 +79,6 @@ async function createProduct(req, res) {
       nombre_producto,
       descripcion,
       precio,
-      cantidad_stock,
       categoria_id
     };
 
