@@ -1,4 +1,33 @@
 const pool = require('../config/db_connection');
+const JWTService = require('../services/jwtService');
+
+/**
+ * Middleware para verificar JWT y autenticar usuario
+ */
+const authenticateToken = (req, res, next) => {
+  try {
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
+
+    if (!token) {
+      return res.status(401).json({
+        success: false,
+        message: 'Token de acceso requerido'
+      });
+    }
+
+    const decoded = JWTService.verifyAccessToken(token);
+    req.user = decoded;
+    next();
+
+  } catch (error) {
+    console.error('Error en authenticateToken:', error.message);
+    return res.status(403).json({
+      success: false,
+      message: 'Token inválido o expirado'
+    });
+  }
+};
 
 // Middleware para verificar que el usuario sea administrador
 const requireAdmin = async (req, res, next) => {
@@ -95,6 +124,7 @@ const requireAuth = async (req, res, next) => {
 };
 
 module.exports = {
+  authenticateToken,
   requireAdmin,
   requireAuth
 }; 

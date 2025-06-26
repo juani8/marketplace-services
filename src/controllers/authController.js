@@ -1,36 +1,41 @@
 const pool = require('../config/db_connection');
 const bcrypt = require('bcrypt');
+const UserModel = require('../models/user.model');
+const JWTService = require('../services/jwtService');
 
 const login = async (req, res) => {
   const { email, password } = req.body;
 
   try {
-    const result = await pool.query(
-      'SELECT usuario_id, tenant_id, nombre, email, password_hash, rol FROM usuarios_tenant WHERE email = $1',
-      [email]
-    );
-
-    if (result.rows.length === 0) {
+    // Buscar usuario con todos los detalles para JWT
+    const userWithDetails = await UserModel.findByEmailWithDetails(email);
+    
+    if (!userWithDetails) {
       return res.status(401).json({ message: 'Usuario no encontrado' });
     }
 
-    const user = result.rows[0];
-    /*const validPassword = await bcrypt.compare(password, user.password_hash);
-
+    // Verificar contraseña (descomenta cuando tengas las contraseñas hasheadas)
+    const validPassword = await UserModel.verifyPassword(password, userWithDetails.password_hash);
+    
     if (!validPassword) {
       return res.status(401).json({ message: 'Contraseña incorrecta' });
-    }*/
+    }
 
-    // A futuro, podrías generar un JWT acá
+    // Generar tokens JWT
+    const tokens = JWTService.generateTokens(userWithDetails);
+
+    // Respuesta en el formato original + tokens
     res.json({
       message: 'Login exitoso',
       user: {
-        usuario_id: user.usuario_id,
-        tenant_id: user.tenant_id,
-        nombre: user.nombre,
-        email: user.email,
-        rol: user.rol
-      }
+        usuario_id: userWithDetails.usuario_id,
+        tenant_id: userWithDetails.tenant_id,
+        nombre: userWithDetails.nombre,
+        email: userWithDetails.email,
+        rol: userWithDetails.rol
+      },
+      // Agregar tokens JWT
+      tokens: tokens
     });
   } catch (error) {
     console.error('Error en login:', error);
@@ -78,10 +83,17 @@ const registerTenant = async (req, res) => {
       [tenantId, nombre_usuario, email, hashedPassword]
     );
 
+    // Obtener usuario completo para generar tokens JWT
+    const completeUser = await UserModel.findByEmailWithDetails(email);
+    const tokens = JWTService.generateTokens(completeUser);
+
+    // Respuesta en formato original + tokens
     res.status(201).json({
       message: 'Tenant y usuario creados correctamente',
       user: userResult.rows[0],
-      tenant_id: tenantId
+      tenant_id: tenantId,
+      // Agregar tokens JWT
+      tokens: tokens
     });
   } catch (error) {
     console.error('Error al registrar tenant:', error);
@@ -93,6 +105,20 @@ const registerInternalUser = async (req, res) => {
   const { tenant_id, nombre, email, password, rol, comercios_ids } = req.body;
 
   try {
+    // Verificar que el usuario autenticado sea admin
+    if (req.user.rol !== 'admin') {
+      return res.status(403).json({ 
+        message: 'Acceso denegado. Solo administradores pueden crear usuarios internos' 
+      });
+    }
+
+    // Verificar que el usuario autenticado pertenezca al mismo tenant
+    if (req.user.tenant_id !== tenant_id) {
+      return res.status(403).json({ 
+        message: 'No puedes crear usuarios para otros tenants' 
+      });
+    }
+
     const hashedPassword = await bcrypt.hash(password, 10);
 
     // Insertamos el usuario
@@ -131,11 +157,117 @@ const registerInternalUser = async (req, res) => {
       );
     }
 
-    res.status(201).json({ message: 'Usuario creado exitosamente', usuario_id });
+    // Obtener usuario completo para generar tokens JWT
+    const completeUser = await UserModel.findByEmailWithDetails(email);
+    const tokens = JWTService.generateTokens(completeUser);
+
+    // Respuesta en formato original + tokens
+    res.status(201).json({ 
+      message: 'Usuario creado exitosamente', 
+      usuario_id,
+      // Agregar tokens JWT
+      tokens: tokens
+    });
   } catch (error) {
     console.error('Error al registrar usuario interno:', error);
     res.status(500).json({ message: 'Error interno del servidor' });
   }
 };
 
-module.exports = { login, registerTenant, registerInternalUser };
+// Nuevos endpoints JWT adicionales (sin cambiar los existentes)
+const refreshToken = async (req, res) => {
+  try {
+    const { refreshToken } = req.body;
+
+    if (!refreshToken) {
+      return res.status(400).json({
+        success: false,
+        message: 'Refresh token requerido'
+      });
+    }
+
+    // Verificar refresh token
+    const decoded = JWTService.verifyRefreshToken(refreshToken);
+
+    // Obtener usuario actualizado
+    const user = await UserModel.findByIdWithDetails(decoded.usuario_id);
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        message: 'Usuario no encontrado'
+      });
+    }
+
+    // Verificar que el tenant esté activo
+    if (user.tenant_estado !== 'activo') {
+      return res.status(403).json({
+        success: false,
+        message: 'Cuenta suspendida. Contacta al administrador'
+      });
+    }
+
+    // Generar nuevos tokens
+    const tokens = JWTService.generateTokens(user);
+
+    res.json({
+      success: true,
+      message: 'Tokens renovados exitosamente',
+      tokens: tokens
+    });
+
+  } catch (error) {
+    console.error('Error en refreshToken:', error);
+    res.status(401).json({
+      success: false,
+      message: 'Refresh token inválido o expirado'
+    });
+  }
+};
+
+const getProfile = async (req, res) => {
+  try {
+    // El usuario viene del middleware de autenticación
+    const user = await UserModel.findByIdWithDetails(req.user.usuario_id);
+    
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'Usuario no encontrado'
+      });
+    }
+
+    const userResponse = {
+      usuario_id: user.usuario_id,
+      tenant_id: user.tenant_id,
+      nombre: user.nombre,
+      email: user.email,
+      rol: user.rol,
+      tenant: {
+        nombre: user.tenant_nombre,
+        razon_social: user.razon_social,
+        estado: user.tenant_estado
+      },
+      comercios: user.comercios || []
+    };
+
+    res.json({
+      success: true,
+      data: userResponse
+    });
+
+  } catch (error) {
+    console.error('Error en getProfile:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor'
+    });
+  }
+};
+
+module.exports = { 
+  login, 
+  registerTenant, 
+  registerInternalUser,
+  refreshToken,
+  getProfile
+};
