@@ -35,8 +35,7 @@ const CategoriaModel = {
     const result = await pool.query(`
       SELECT DISTINCT c.categoria_id, c.nombre, c.descripcion, c.fecha_creacion
       FROM categorias c
-      INNER JOIN productos p ON c.categoria_id = p.categoria_id
-      WHERE p.tenant_id = $1
+      LEFT JOIN productos p ON c.categoria_id = p.categoria_id AND p.tenant_id = $1
       ORDER BY c.nombre
     `, [tenantId]);
     return result.rows;
