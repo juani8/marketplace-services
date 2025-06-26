@@ -1,4 +1,5 @@
 const pool = require('../config/db_connection');
+const { publishStockUpdated } = require('../events/publishers/stockPublisher');
 
 const OrderModel = {
   /**
@@ -209,19 +210,68 @@ const OrderModel = {
     }
   },
 
-  // Actualizar stock de productos
+  // Actualizar stock de productos (reduce stock por ventas)
   async updateStock(comercioId, productos, client) {
     try {
       for (const producto of productos) {
-        const updateQuery = `
-          UPDATE stock_comercio sc
-          SET cantidad_stock = cantidad_stock - $1
-          FROM productos p
-          WHERE sc.producto_id = p.producto_id
-          AND sc.comercio_id = $2 
-          AND p.nombre = $3
+        // Obtener stock anterior y información del producto
+        const infoQuery = `
+          SELECT 
+            sc.cantidad_stock as cantidad_anterior,
+            p.producto_id,
+            p.nombre_producto,
+            p.descripcion,
+            p.precio,
+            p.categoria_id,
+            c.nombre as categoria_nombre,
+            co.nombre as comercio_nombre,
+            co.tenant_id
+          FROM stock_comercio sc
+          INNER JOIN productos p ON sc.producto_id = p.producto_id
+          INNER JOIN comercios co ON sc.comercio_id = co.comercio_id
+          LEFT JOIN categorias c ON p.categoria_id = c.categoria_id
+          WHERE sc.comercio_id = $1 AND p.nombre_producto = $2
         `;
-        await client.query(updateQuery, [producto.cant, comercioId, producto.nombre]);
+        
+        const infoResult = await client.query(infoQuery, [comercioId, producto.nombre]);
+        const stockInfo = infoResult.rows[0];
+
+        if (stockInfo) {
+          // Actualizar stock
+          const updateQuery = `
+            UPDATE stock_comercio sc
+            SET cantidad_stock = cantidad_stock - $1
+            FROM productos p
+            WHERE sc.producto_id = p.producto_id
+            AND sc.comercio_id = $2 
+            AND p.nombre_producto = $3
+          `;
+          await client.query(updateQuery, [producto.cant, comercioId, producto.nombre]);
+
+          // Calcular nueva cantidad
+          const cantidadNueva = stockInfo.cantidad_anterior - producto.cant;
+
+          // Publicar evento de stock actualizado (sin bloquear la transacción)
+          setImmediate(async () => {
+            try {
+              await publishStockUpdated({
+                comercio_id: comercioId,
+                comercio_nombre: stockInfo.comercio_nombre,
+                tenant_id: stockInfo.tenant_id,
+                producto_id: stockInfo.producto_id,
+                nombre_producto: stockInfo.nombre_producto,
+                descripcion: stockInfo.descripcion,
+                precio: stockInfo.precio,
+                categoria_id: stockInfo.categoria_id,
+                categoria_nombre: stockInfo.categoria_nombre,
+                cantidad_anterior: stockInfo.cantidad_anterior,
+                cantidad_nueva: cantidadNueva
+              });
+            } catch (eventError) {
+              console.error('Error publicando evento stock.actualizado:', eventError);
+            }
+          });
+        }
       }
     } catch (error) {
       throw error;
@@ -321,6 +371,123 @@ const OrderModel = {
       
       const finalResult = await client.query(finalQuery, [orderData.pedidoId]);
       return finalResult.rows[0];
+
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
+  },
+
+  // Recuperar stock cuando se cancela una orden
+  async recoverStock(ordenId) {
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+
+      // Obtener la orden con sus productos
+      const orderQuery = `
+        SELECT 
+          o.comercio_id,
+          o.tenant_id,
+          o.estado,
+          json_agg(
+            json_build_object(
+              'producto_id', op.producto_id,
+              'cantidad', op.cantidad
+            )
+          ) as productos
+        FROM ordenes o
+        INNER JOIN ordenes_productos op ON o.orden_id = op.orden_id
+        WHERE o.orden_id = $1
+        GROUP BY o.comercio_id, o.tenant_id, o.estado
+      `;
+
+      const orderResult = await client.query(orderQuery, [ordenId]);
+      
+      if (orderResult.rows.length === 0) {
+        throw new Error(`Orden ${ordenId} no encontrada`);
+      }
+
+      const orden = orderResult.rows[0];
+
+      // Validar que la orden esté en estado válido para cancelar
+      if (!['listo', 'aceptada', 'pendiente'].includes(orden.estado)) {
+        throw new Error(`Orden ${ordenId} en estado inválido para cancelar: ${orden.estado}`);
+      }
+
+      // Recuperar stock para cada producto
+      for (const producto of orden.productos) {
+        // Obtener información completa del producto antes de actualizar
+        const infoQuery = `
+          SELECT 
+            sc.cantidad_stock as cantidad_anterior,
+            p.producto_id,
+            p.nombre_producto,
+            p.descripcion,
+            p.precio,
+            p.categoria_id,
+            c.nombre as categoria_nombre,
+            co.nombre as comercio_nombre,
+            co.tenant_id
+          FROM stock_comercio sc
+          INNER JOIN productos p ON sc.producto_id = p.producto_id
+          INNER JOIN comercios co ON sc.comercio_id = co.comercio_id
+          LEFT JOIN categorias c ON p.categoria_id = c.categoria_id
+          WHERE sc.comercio_id = $1 AND sc.producto_id = $2
+        `;
+        
+        const infoResult = await client.query(infoQuery, [orden.comercio_id, producto.producto_id]);
+        const stockInfo = infoResult.rows[0];
+
+        if (stockInfo) {
+          // Recuperar stock
+          const updateQuery = `
+            UPDATE stock_comercio 
+            SET cantidad_stock = cantidad_stock + $1
+            WHERE comercio_id = $2 AND producto_id = $3
+          `;
+          
+          await client.query(updateQuery, [producto.cantidad, orden.comercio_id, producto.producto_id]);
+
+          // Calcular nueva cantidad
+          const cantidadNueva = stockInfo.cantidad_anterior + producto.cantidad;
+
+          // Publicar evento de stock actualizado (después del commit)
+          setImmediate(async () => {
+            try {
+              await publishStockUpdated({
+                comercio_id: orden.comercio_id,
+                comercio_nombre: stockInfo.comercio_nombre,
+                tenant_id: stockInfo.tenant_id,
+                producto_id: stockInfo.producto_id,
+                nombre_producto: stockInfo.nombre_producto,
+                descripcion: stockInfo.descripcion,
+                precio: stockInfo.precio,
+                categoria_id: stockInfo.categoria_id,
+                categoria_nombre: stockInfo.categoria_nombre,
+                cantidad_anterior: stockInfo.cantidad_anterior,
+                cantidad_nueva: cantidadNueva
+              });
+            } catch (eventError) {
+              console.error('Error publicando evento stock.actualizado:', eventError);
+            }
+          });
+        }
+      }
+
+      // Actualizar estado de la orden
+      const updateOrderQuery = `
+        UPDATE ordenes 
+        SET estado = 'cancelada', fecha_actualizacion = CURRENT_TIMESTAMP
+        WHERE orden_id = $1
+      `;
+      
+      await client.query(updateOrderQuery, [ordenId]);
+
+      await client.query('COMMIT');
+      return true;
 
     } catch (error) {
       await client.query('ROLLBACK');

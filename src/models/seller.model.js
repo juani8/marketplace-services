@@ -413,6 +413,16 @@ const SellerModel = {
         throw new Error('Producto no pertenece al tenant del comercio');
       }
 
+      // Obtener stock anterior para comparación
+      const stockAnteriorQuery = `
+        SELECT COALESCE(cantidad_stock, 0) as cantidad_anterior
+        FROM stock_comercio
+        WHERE comercio_id = $1 AND producto_id = $2
+      `;
+      
+      const stockAnteriorResult = await pool.query(stockAnteriorQuery, [comercioId, productoId]);
+      const cantidadAnterior = stockAnteriorResult.rows[0]?.cantidad_anterior || 0;
+
       // Upsert del stock
       const query = `
         INSERT INTO stock_comercio (comercio_id, producto_id, cantidad_stock)
@@ -423,7 +433,34 @@ const SellerModel = {
       `;
       
       const result = await pool.query(query, [comercioId, productoId, cantidadStock]);
-      return result.rows[0];
+
+      // Obtener información completa para el evento
+      const infoCompletaQuery = `
+        SELECT 
+          sc.comercio_id,
+          sc.producto_id,
+          sc.cantidad_stock,
+          p.nombre_producto,
+          p.descripcion,
+          p.precio,
+          p.categoria_id,
+          c.nombre as categoria_nombre,
+          co.nombre as comercio_nombre,
+          co.tenant_id
+        FROM stock_comercio sc
+        INNER JOIN productos p ON sc.producto_id = p.producto_id
+        INNER JOIN comercios co ON sc.comercio_id = co.comercio_id
+        LEFT JOIN categorias c ON p.categoria_id = c.categoria_id
+        WHERE sc.comercio_id = $1 AND sc.producto_id = $2
+      `;
+      
+      const infoResult = await pool.query(infoCompletaQuery, [comercioId, productoId]);
+      const stockActualizado = infoResult.rows[0];
+      
+      // Agregar cantidad anterior al resultado
+      stockActualizado.cantidad_anterior = cantidadAnterior;
+      
+      return stockActualizado;
       
     } catch (error) {
       console.error('Error en updateProductStock:', error);

@@ -1,8 +1,7 @@
 const { getTimestamp } = require('../utils/getTimestamp');
 const { publishEvent } = require('../utils/publishEvent');
-// TODO: Importar los modelos cuando estén creados
-// const OrdenModel = require('../../models/orden.model');
-// const ProductoStockModel = require('../../models/producto_stock.model');
+const OrderModel = require('../../models/order.model');
+const { publishStockUpdated } = require('../publishers/stockPublisher');
 
 /**
  * Maneja el evento delivery.failed y actualiza el estado de la orden
@@ -10,44 +9,31 @@ const { publishEvent } = require('../utils/publishEvent');
  */
 async function handle(eventData) {
   try {
-    // TODO: Obtener la orden con sus items
-    // const orden = await OrdenModel.getByIdWithItems(eventData.orden_id);
-    // if (!orden) {
-    //   throw new Error(`Orden ${eventData.orden_id} no encontrada`);
-    // }
+    console.log('Procesando delivery.failed para orden:', eventData.orden_id);
 
-    // TODO: Validar que la orden esté en estado válido para cancelar
-    // if (!['listo', 'aceptada'].includes(orden.estado)) {
-    //   throw new Error(`Orden ${eventData.orden_id} en estado inválido: ${orden.estado}`);
-    // }
-
-    // TODO: Recuperar stock para cada item
-    // for (const item of orden.items) {
-    //   await ProductoStockModel.incrementStock(
-    //     item.producto_id,
-    //     eventData.seller_id,
-    //     item.cantidad
-    //   );
-    // }
-
-    // TODO: Actualizar estado de la orden a 'cancelada'
-    // await OrdenModel.updateStatus(eventData.orden_id, 'cancelada');
+    // Recuperar stock de la orden cancelada
+    const stockRecuperado = await OrderModel.recoverStock(eventData.orden_id);
     
+    if (!stockRecuperado) {
+      throw new Error(`No se pudo recuperar el stock para la orden ${eventData.orden_id}`);
+    }
+
     // Publicar evento de orden cancelada
     await publishEvent({
       topic: 'orden.cancelada',
       payload: {
         orden_id: eventData.orden_id,
-        tenant_id: eventData.tenant_id,
-        comercio_id: eventData.seller_id,
-        fecha_cancelacion: eventData.fecha_intento,
-        razon: eventData.razon,
-        estado_anterior: 'listo', // TODO: Usar el estado real de la orden
+        fecha_cancelacion: new Date().toISOString(),
+        razon: eventData.razon_fallo || 'Fallo en delivery',
+        intentos_realizados: eventData.intentos_realizados || 1,
+        stock_recuperado: true,
         timestamp: getTimestamp()
       }
     });
 
+    console.log('Orden cancelada y stock recuperado exitosamente:', eventData.orden_id);
     return true;
+
   } catch (error) {
     console.error('Error procesando delivery.failed:', error);
     return false;
