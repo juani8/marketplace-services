@@ -2,6 +2,7 @@ const pool = require('../config/db_connection');
 const bcrypt = require('bcrypt');
 const UserModel = require('../models/user.model');
 const JWTService = require('../services/jwtService');
+const { geocodeAddress } = require('../services/geocodingService');
 
 const login = async (req, res) => {
   const { email, password } = req.body;
@@ -45,16 +46,56 @@ const login = async (req, res) => {
 
 const registerTenant = async (req, res) => {
   const {
-    nombre_tenant,
+    nombre_usuario,
+    password,
+    nombre,
     razon_social,
     cuenta_bancaria,
     email,
-    password,
-    nombre_usuario
+    telefono,
+    calle,
+    numero,
+    ciudad,
+    provincia,
+    codigo_postal,
+    sitio_web,    // Opcional
+    instagram     // Opcional
   } = req.body;
 
   try {
-    // Verificamos si el email ya existe
+    // Validar campos obligatorios
+    const camposObligatorios = {
+      nombre_usuario,
+      password,
+      nombre,
+      razon_social,
+      cuenta_bancaria,
+      email,
+      telefono,
+      calle,
+      numero,
+      ciudad,
+      provincia,
+      codigo_postal
+    };
+
+    for (const [campo, valor] of Object.entries(camposObligatorios)) {
+      if (!valor || valor.trim() === '') {
+        return res.status(400).json({ 
+          message: `El campo '${campo}' es obligatorio y no puede estar vacío` 
+        });
+      }
+    }
+
+    // Validar formato de email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({ 
+        message: 'El formato del email no es válido' 
+      });
+    }
+
+    // Verificar si el email ya existe
     const existingUser = await pool.query(
       'SELECT * FROM usuarios_tenant WHERE email = $1',
       [email]
@@ -63,41 +104,106 @@ const registerTenant = async (req, res) => {
       return res.status(409).json({ message: 'El email ya está registrado' });
     }
 
-    // Creamos el tenant
-    const tenantResult = await pool.query(
-      `INSERT INTO tenants (nombre, razon_social, cuenta_bancaria)
-       VALUES ($1, $2, $3) RETURNING tenant_id`,
-      [nombre_tenant, razon_social, cuenta_bancaria]
-    );
+    // Geocodificar la dirección ANTES de hacer cualquier insert
+    let lat, lon;
+    try {
+      const coordenadas = await geocodeAddress({
+        calle,
+        numero,
+        ciudad,
+        provincia,
+        codigo_postal
+      });
+      lat = coordenadas.lat;
+      lon = coordenadas.lon;
+    } catch (geocodingError) {
+      console.error('Error en geocoding:', geocodingError.message);
+      return res.status(400).json({ 
+        message: 'No se pudo geocodificar la dirección proporcionada. Verifique que los datos de dirección sean correctos.',
+        error: geocodingError.message
+      });
+    }
 
-    const tenantId = tenantResult.rows[0].tenant_id;
+    // Comenzar transacción solo si el geocoding fue exitoso
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
 
-    // Hasheamos el password
-    const hashedPassword = await bcrypt.hash(password, 10);
+      // 1. Crear el tenant
+      const tenantResult = await client.query(
+        `INSERT INTO tenants (nombre, razon_social, cuenta_bancaria)
+         VALUES ($1, $2, $3) RETURNING tenant_id`,
+        [nombre, razon_social, cuenta_bancaria]
+      );
 
-    // Creamos el usuario admin
-    const userResult = await pool.query(
-      `INSERT INTO usuarios_tenant (tenant_id, nombre, email, password_hash, rol)
-       VALUES ($1, $2, $3, $4, 'admin')
-       RETURNING usuario_id, nombre, email, rol`,
-      [tenantId, nombre_usuario, email, hashedPassword]
-    );
+      const tenantId = tenantResult.rows[0].tenant_id;
 
-    // Obtener usuario completo para generar tokens JWT
-    const completeUser = await UserModel.findByEmailWithDetails(email);
-    const tokens = JWTService.generateTokens(completeUser);
+      // 2. Crear datos de contacto (ahora siempre con coordenadas)
+      await client.query(
+        `INSERT INTO datos_contacto (
+          tenant_id, email, telefono, calle, numero, ciudad, 
+          provincia, codigo_postal, lat, lon, sitio_web, instagram
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
+        [
+          tenantId,
+          email,
+          telefono,
+          calle,
+          numero,
+          ciudad,
+          provincia,
+          codigo_postal,
+          lat,
+          lon,
+          sitio_web || null,
+          instagram || null
+        ]
+      );
 
-    // Respuesta en formato original + tokens
-    res.status(201).json({
-      message: 'Tenant y usuario creados correctamente',
-      user: userResult.rows[0],
-      tenant_id: tenantId,
-      // Agregar tokens JWT
-      tokens: tokens
-    });
+      // 3. Hashear contraseña
+      const hashedPassword = await bcrypt.hash(password, 10);
+
+      // 4. Crear usuario admin
+      const userResult = await client.query(
+        `INSERT INTO usuarios_tenant (tenant_id, nombre, email, password_hash, rol)
+         VALUES ($1, $2, $3, $4, 'admin')
+         RETURNING usuario_id, nombre, email, rol`,
+        [tenantId, nombre_usuario, email, hashedPassword]
+      );
+
+      await client.query('COMMIT');
+
+      // 5. Obtener usuario completo para generar tokens JWT
+      const completeUser = await UserModel.findByEmailWithDetails(email);
+      const tokens = JWTService.generateTokens(completeUser);
+
+      // Respuesta exitosa
+      res.status(201).json({
+        message: 'Tenant y usuario creados correctamente',
+        user: userResult.rows[0],
+        tenant_id: tenantId,
+        tokens: tokens
+      });
+
+    } catch (transactionError) {
+      await client.query('ROLLBACK');
+      throw transactionError;
+    } finally {
+      client.release();
+    }
+
   } catch (error) {
     console.error('Error al registrar tenant:', error);
-    res.status(500).json({ message: 'Error al registrar tenant' });
+    
+    // Manejar errores específicos de base de datos
+    if (error.code === '23505') { // Unique violation
+      return res.status(409).json({ message: 'Ya existe un registro con estos datos' });
+    }
+    
+    res.status(500).json({ 
+      message: 'Error al registrar tenant',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
   }
 };
 

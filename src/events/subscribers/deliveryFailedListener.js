@@ -1,15 +1,21 @@
 const deliveryFailedHandler = require('../handlers/deliveryFailedHandler');
 
 /**
- * Procesa los eventos de delivery.failed recibidos
- * @param {Object} event - Evento recibido del hub
+ * Procesa los eventos de pedido.cancelado recibidos
+ * @param {Object} event - Evento recibido del hub con formato { topic: 'pedido.cancelado', payload: { pedidoId, estado } }
  */
 async function processEvent(event) {
   try {
     // Validar que el evento tenga la estructura esperada
-    if (!event || !event.payload || !event.payload.orden_id) {
-      console.error('Evento delivery.failed inválido:', event);
+    if (!event || !event.payload || !event.payload.pedidoId || !event.payload.estado) {
+      console.error('Evento pedido.cancelado inválido:', event);
       return false;
+    }
+
+    // Validar que el estado sea 'CANCELADO'
+    if (event.payload.estado !== 'CANCELADO') {
+      console.log(`Evento pedido.cancelado recibido con estado ${event.payload.estado}, ignorando.`);
+      return true; // No es error, simplemente no procesamos
     }
 
     /*
@@ -28,7 +34,7 @@ async function processEvent(event) {
     UPDATE ordenes 
     SET estado = 'cancelada',
         fecha_actualizacion = CURRENT_TIMESTAMP
-    WHERE orden_id = [orden_id];
+    WHERE orden_id = [pedidoId];
 
     Importante: 
     - La orden podría estar en estado 'listo' cuando falla el delivery
@@ -42,14 +48,14 @@ async function processEvent(event) {
     return result;
 
   } catch (error) {
-    console.error('Error procesando evento delivery.failed:', error);
+    console.error('Error procesando evento pedido.cancelado:', error);
     return false;
   }
 }
 
 // Configuración del subscriber
 const subscriber = {
-  topic: 'delivery.failed',
+  topic: 'pedido.cancelado',
   processEvent
 };
 

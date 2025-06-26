@@ -1,5 +1,7 @@
 const TenantModel = require('../models/tenant.model');
 const { geocodeAddress } = require('../services/geocodingService');
+const { publishEvent } = require('../events/utils/publishEvent');
+const { createBalancePromise } = require('../events/utils/balancePromises');
 
 async function getAllTenants(req, res) {
   try {
@@ -217,4 +219,69 @@ async function deleteTenant(req, res) {
   }
 }
 
-module.exports = { getAllTenants, createTenant, patchTenant, deleteTenant };
+async function getBalance(req, res) {
+  try {
+    // Obtener tenant_id del JWT del usuario autenticado
+    const tenantId = req.user.tenant_id;
+
+    if (!tenantId) {
+      return res.status(400).json({ 
+        message: 'Usuario no tiene tenant asociado' 
+      });
+    }
+
+    // Consultar el email del tenant usando el modelo
+    const result = await TenantModel.getEmailByTenantId(tenantId);
+
+    if (!result.success) {
+      const statusCode = result.error.includes('no encontrado') ? 404 : 400;
+      return res.status(statusCode).json({ 
+        message: result.error 
+      });
+    }
+
+    // Usar tenant_id como traceId único
+    const traceId = tenantId.toString();
+
+    // Crear promesa para esperar la respuesta
+    const balancePromise = createBalancePromise(traceId, 30000); // 30 segundos timeout
+
+    // Publicar evento para solicitar balance
+    await publishEvent({
+      topic: 'get.balances.request',
+      payload: {
+        traceData: {
+          originModule: 'marketplace-service',
+          traceId: traceId
+        },
+        email: result.email
+      }
+    });
+
+    // Esperar la respuesta de blockchain
+    try {
+      const balance = await balancePromise;
+      
+      // Devolver solo los campos importantes al frontend
+      res.status(200).json({
+        fiatBalance: balance.fiatBalance,
+        cryptoBalance: balance.cryptoBalance
+      });
+
+    } catch (timeoutError) {
+      console.error('Timeout esperando respuesta de balance:', timeoutError);
+      res.status(408).json({ 
+        message: 'Timeout esperando respuesta del sistema de blockchain. Intente nuevamente.' 
+      });
+    }
+
+  } catch (error) {
+    console.error('Error solicitando balance:', error);
+    res.status(500).json({ 
+      message: 'Error interno del servidor',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+}
+
+module.exports = { getAllTenants, createTenant, patchTenant, deleteTenant, getBalance };

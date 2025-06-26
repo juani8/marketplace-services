@@ -537,6 +537,63 @@ const OrderModel = {
       throw error;
     }
   },
+
+  /**
+   * Actualiza el estado de una orden
+   * @param {string} orderId - ID de la orden 
+   * @param {string} nuevoEstado - Nuevo estado de la orden
+   * @returns {Promise<boolean>} true si se actualizó correctamente
+   */
+  async updateStatus(orderId, nuevoEstado) {
+    const client = await pool.connect();
+    
+    try {
+      // Primero verificar que la orden existe
+      const checkQuery = `
+        SELECT orden_id, estado 
+        FROM ordenes 
+        WHERE orden_id = $1
+      `;
+      
+      const checkResult = await client.query(checkQuery, [orderId]);
+      
+      if (checkResult.rows.length === 0) {
+        throw new Error(`Orden ${orderId} no encontrada`);
+      }
+
+      const estadoActual = checkResult.rows[0].estado;
+      
+      // Validar transiciones de estado válidas
+      const transicionesValidas = {
+        'pendiente': ['aceptada', 'rechazada'],
+        'aceptada': ['listo', 'cancelada'], 
+        'listo': ['finalizada', 'cancelada'],
+        'rechazada': [],
+        'cancelada': [],
+        'finalizada': []
+      };
+
+      if (!transicionesValidas[estadoActual] || !transicionesValidas[estadoActual].includes(nuevoEstado)) {
+        throw new Error(`Transición de estado inválida: ${estadoActual} -> ${nuevoEstado}`);
+      }
+
+      // Actualizar el estado
+      const updateQuery = `
+        UPDATE ordenes 
+        SET estado = $1, fecha_actualizacion = CURRENT_TIMESTAMP
+        WHERE orden_id = $2
+      `;
+      
+      await client.query(updateQuery, [nuevoEstado, orderId]);
+      return true;
+
+    } catch (error) {
+      console.error(`Error actualizando estado de orden ${orderId}:`, error);
+      throw error;
+    } finally {
+      client.release();
+    }
+  },
 };
 
 module.exports = OrderModel; 

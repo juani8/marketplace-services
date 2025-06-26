@@ -1,41 +1,44 @@
 const { getTimestamp } = require('../utils/getTimestamp');
-const { publishEvent } = require('../utils/publishEvent');
 const OrderModel = require('../../models/order.model');
-const { publishStockUpdated } = require('../publishers/stockPublisher');
 
 /**
- * Maneja el evento delivery.failed y actualiza el estado de la orden
- * @param {Object} eventData - Datos del evento recibido
+ * Maneja el evento pedido.cancelado y actualiza el estado de la orden
+ * @param {Object} eventData - Datos del evento recibido { pedidoId: 'ORD_PHU998', estado: 'CANCELADO' }
  */
 async function handle(eventData) {
   try {
-    console.log('Procesando delivery.failed para orden:', eventData.orden_id);
+    const { pedidoId, estado } = eventData;
 
-    // Recuperar stock de la orden cancelada
-    const stockRecuperado = await OrderModel.recoverStock(eventData.orden_id);
-    
-    if (!stockRecuperado) {
-      throw new Error(`No se pudo recuperar el stock para la orden ${eventData.orden_id}`);
+    // Validar que tenemos los datos requeridos
+    if (!pedidoId || !estado) {
+      throw new Error('Datos del evento inválidos: se requiere pedidoId y estado');
     }
 
-    // Publicar evento de orden cancelada
-    await publishEvent({
-      topic: 'orden.cancelada',
-      payload: {
-        orden_id: eventData.orden_id,
-        fecha_cancelacion: new Date().toISOString(),
-        razon: eventData.razon_fallo || 'Fallo en delivery',
-        intentos_realizados: eventData.intentos_realizados || 1,
-        stock_recuperado: true,
-        timestamp: getTimestamp()
-      }
-    });
+    // Validar que el estado sea 'CANCELADO'
+    if (estado !== 'CANCELADO') {
+      throw new Error(`Estado inválido: ${estado}. Se esperaba 'CANCELADO'`);
+    }
 
-    console.log('Orden cancelada y stock recuperado exitosamente:', eventData.orden_id);
+    console.log('Procesando pedido.cancelado para orden:', pedidoId);
+
+    // Recuperar stock de la orden cancelada
+    // El método recoverStock ya maneja:
+    // 1. Verificar que la orden existe
+    // 2. Validar estados válidos para cancelar
+    // 3. Recuperar el stock de todos los productos
+    // 4. Actualizar el estado a 'cancelada'
+    // 5. Publicar eventos de stock actualizado
+    const stockRecuperado = await OrderModel.recoverStock(pedidoId);
+    
+    if (!stockRecuperado) {
+      throw new Error(`No se pudo recuperar el stock para la orden ${pedidoId}`);
+    }
+
+    console.log('Orden cancelada y stock recuperado exitosamente:', pedidoId);
     return true;
 
   } catch (error) {
-    console.error('Error procesando delivery.failed:', error);
+    console.error('Error procesando pedido.cancelado:', error);
     return false;
   }
 }

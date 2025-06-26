@@ -42,7 +42,7 @@ Este documento detalla todos los eventos que el sistema **escucha** y **publica*
 
 ---
 
-### 2. `delivery.successful`
+### 2. `pedido.entregado`
 **Descripción:** Evento recibido cuando una entrega se completa exitosamente  
 **Endpoint:** `POST /callback`  
 **Respuesta del sistema:** ❌ No envía respuesta
@@ -50,50 +50,44 @@ Este documento detalla todos los eventos que el sistema **escucha** y **publica*
 **Formato de entrada:**
 ```json
 {
-  "topic": "delivery.successful",
+  "topic": "pedido.entregado",
   "payload": {
-    "orden_id": 123,
-    "delivery_info": {
-      "repartidor_id": "REP001",
-      "fecha_entrega": "2024-01-15T14:30:00Z",
-      "coordenadas_entrega": {
-        "lat": -34.6037,
-        "lon": -58.3816
-      }
-    }
+    "pedidoId": "ORD_PHU998",
+    "estado": "ENTREGADO"
   }
 }
 ```
 
 **Acciones que realiza:**
-1. Actualiza el estado de la orden de 'listo' a 'finalizada'
-2. Actualiza timestamp de `fecha_actualizacion`
-3. No recupera stock (entrega exitosa)
+1. Valida que la orden existe y está en estado 'listo'
+2. Actualiza el estado de la orden de 'listo' a 'finalizada'
+3. Actualiza timestamp de `fecha_actualizacion`
+4. No recupera stock (entrega exitosa)
 
 ---
 
-### 3. `delivery.failed`
-**Descripción:** Evento recibido cuando una entrega falla  
+### 3. `pedido.cancelado`
+**Descripción:** Evento recibido cuando una entrega falla o se cancela  
 **Endpoint:** `POST /callback`  
 **Respuesta del sistema:** ❌ No envía respuesta
 
 **Formato de entrada:**
 ```json
 {
-  "topic": "delivery.failed",
+  "topic": "pedido.cancelado",
   "payload": {
-    "orden_id": 123,
-    "razon_fallo": "Cliente no disponible",
-    "intentos_realizados": 2,
-    "proximo_intento": "2024-01-15T16:00:00Z"
+    "pedidoId": "ORD_PHU998",
+    "estado": "CANCELADO"
   }
 }
 ```
 
 **Acciones que realiza:**
-1. Actualiza el estado de la orden a 'cancelada'
-2. **Recupera el stock** de todos los productos de la orden
-3. Actualiza timestamp de `fecha_actualizacion`
+1. Valida que la orden existe y está en estado válido para cancelar ('listo', 'aceptada', 'pendiente')
+2. Actualiza el estado de la orden a 'cancelada'
+3. **Recupera el stock** de todos los productos de la orden
+4. Para cada producto, publica evento `stock.actualizado` individual con nueva cantidad
+5. Actualiza timestamp de `fecha_actualizacion`
 
 ---
 
