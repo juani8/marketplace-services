@@ -14,7 +14,8 @@ const JWTService = {
         razon_social: user.razon_social,
         estado: user.tenant_estado
       },
-      comercios: user.comercios || []
+      comercios: user.comercios || [],
+      comercios_autorizados_id: user.comercios ? user.comercios.map(c => c.comercio_id) : []
     };
 
     return jwt.sign(payload, process.env.JWT_SECRET, {
