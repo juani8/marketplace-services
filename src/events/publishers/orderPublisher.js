@@ -6,18 +6,15 @@ const { getTimestamp } = require('../utils/getTimestamp');
  * @param {Object} orderData - Datos del pedido a confirmar
  */
 async function publishOrderConfirmation(orderData) {
-  const event = {
-    topic: 'pedido.confirmar',
-    payload: {
-      pedidoId: orderData.pedidoId,
-      comercio_id: orderData.comercio_id,
-      cliente_nombre: orderData.cliente_nombre,
-      direccion_entrega: orderData.direccion_entrega,
-      productos: orderData.productos
-    }
+  const payload = {
+    pedidoId: orderData.pedidoId,
+    comercio_id: orderData.comercio_id,
+    cliente_nombre: orderData.cliente_nombre,
+    direccion_entrega: orderData.direccion_entrega,
+    productos: orderData.productos
   };
 
-  return await publishEvent(event);
+  return await publishEvent('pedido.confirmar', payload);
 }
 
 /**

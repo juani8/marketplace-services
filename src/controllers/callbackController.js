@@ -4,6 +4,8 @@ const ventasMesListener = require('../events/subscribers/ventasMesListener');
 const deliverySuccessfulListener = require('../events/subscribers/deliverySuccessfulListener');
 const deliveryFailedListener = require('../events/subscribers/deliveryFailedListener');
 const balancesResponseListener = require('../events/subscribers/balancesResponseListener');
+const orderCreatedListener = require('../events/subscribers/orderCreatedListener');
+const ordersByTenantListener = require('../events/subscribers/ordersByTenantListener');
 
 // Mapa de listeners por topic
 const listeners = {
@@ -11,7 +13,9 @@ const listeners = {
   'ventas.mes': ventasMesListener,
   'pedido.entregado': deliverySuccessfulListener,
   'pedido.cancelado': deliveryFailedListener,
-  'get.balances.response': balancesResponseListener
+  'get.balances.response': balancesResponseListener,
+  'pedido.creado': orderCreatedListener,
+  'ordenesbytenant.pedido': ordersByTenantListener
 };
 
 /**
