@@ -42,7 +42,8 @@ jobs:
             export JWT_REFRESH_SECRET="${{ secrets.JWT_REFRESH_SECRET }}"
             export JWT_ACCESS_EXPIRES_IN="${{ secrets.JWT_ACCESS_EXPIRES_IN }}"
             export JWT_REFRESH_EXPIRES_IN="${{ secrets.JWT_REFRESH_EXPIRES_IN }}"
-            export HUB_USERNAME{{ secrets.HUB_USERNAME }}"
-            export HUB_PASSWORD{{ secrets.HUB_PASSWORD }}"
+            export HUB_USERNAME="${{ secrets.HUB_USERNAME }}"
+            export HUB_PASSWORD="${{ secrets.HUB_PASSWORD }}"
+            
             chmod +x ~/deploy-backend.sh
             ~/deploy-backend.sh
