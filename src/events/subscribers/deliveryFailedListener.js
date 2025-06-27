@@ -12,8 +12,9 @@ async function processEvent(event) {
       return false;
     }
 
-    // Validar que el estado sea 'CANCELADO'
-    if (event.payload.estado !== 'CANCELADO') {
+    // Validar que el estado sea 'CANCELADO' o 'cancelado'
+    const estadoNormalizado = event.payload.estado.toUpperCase();
+    if (estadoNormalizado !== 'CANCELADO') {
       console.log(`Evento pedido.cancelado recibido con estado ${event.payload.estado}, ignorando.`);
       return true; // No es error, simplemente no procesamos
     }

@@ -7,14 +7,12 @@ const { getTimestamp } = require('../utils/getTimestamp');
  */
 async function publishVentasMesResponse(ventas) {
   const payload = {
-    topic: 'venta.mes.respuesta',
-    payload: {
-      ventas: ventas,
-      timestamp: getTimestamp()
-    }
+    ventas: ventas,
+    timestamp: getTimestamp()
   };
 
-  return await publishEvent(payload);
+   return await publishEvent('venta.mes.respuesta', payload);
+
 }
 
 module.exports = {

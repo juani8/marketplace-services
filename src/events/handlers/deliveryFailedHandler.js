@@ -14,9 +14,10 @@ async function handle(eventData) {
       throw new Error('Datos del evento inválidos: se requiere pedidoId y estado');
     }
 
-    // Validar que el estado sea 'CANCELADO'
-    if (estado !== 'CANCELADO') {
-      throw new Error(`Estado inválido: ${estado}. Se esperaba 'CANCELADO'`);
+    // Validar que el estado sea 'CANCELADO' o 'cancelado'
+    const estadoNormalizado = estado.toUpperCase();
+    if (estadoNormalizado !== 'CANCELADO') {
+      throw new Error(`Estado inválido: ${estado}. Se esperaba 'CANCELADO' o 'cancelado'`);
     }
 
     console.log('Procesando pedido.cancelado para orden:', pedidoId);
@@ -34,6 +35,10 @@ async function handle(eventData) {
       throw new Error(`No se pudo recuperar el stock para la orden ${pedidoId}`);
     }
 
+    await OrderModel.updateStatus(pedidoId, 'cancelada');
+
+    console.log(`Orden ${pedidoId} actualizada a estado 'cancelada'`);
+    
     console.log('Orden cancelada y stock recuperado exitosamente:', pedidoId);
     return true;
 

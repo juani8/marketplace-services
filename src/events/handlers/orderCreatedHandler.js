@@ -38,8 +38,22 @@ async function handle(event) {
     // Insertar el pedido y actualizar stock
     await OrderModel.create(orderToCreate);
 
+    console.log(`Pedido ${orderData.pedidoId} creado exitosamente en estado 'pendiente'`);
+
+    // Reducir stock de los productos
+    await OrderModel.reduceStock(orderData.pedidoId);
+
+    console.log(`Stock reducido para pedido ${orderData.pedidoId}`);
+
     // Publicar confirmación
     await publishOrderConfirmation(orderData);
+
+    console.log(`Evento pedido.confirmar publicado para pedido ${orderData.pedidoId}`);
+
+    // Actualizar automáticamente el estado a 'listo' después de la confirmación
+    await OrderModel.updateStatus(orderData.pedidoId, 'listo');
+
+    console.log(`Pedido ${orderData.pedidoId} actualizado automáticamente a estado 'listo'`);
 
     return true;
   } catch (error) {

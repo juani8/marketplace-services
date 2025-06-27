@@ -14,9 +14,10 @@ async function handle(eventData) {
       throw new Error('Datos del evento inválidos: se requiere pedidoId y estado');
     }
 
-    // Validar que el estado sea 'ENTREGADO'
-    if (estado !== 'ENTREGADO') {
-      throw new Error(`Estado inválido: ${estado}. Se esperaba 'ENTREGADO'`);
+    // Validar que el estado sea 'ENTREGADO' o 'entregado'
+    const estadoNormalizado = estado.toUpperCase();
+    if (estadoNormalizado !== 'ENTREGADO') {
+      throw new Error(`Estado inválido: ${estado}. Se esperaba 'ENTREGADO' o 'entregado'`);
     }
 
     // Obtener la orden y validar que exista

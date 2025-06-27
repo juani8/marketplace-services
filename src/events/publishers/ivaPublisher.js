@@ -6,19 +6,16 @@ const publishEvent = require('../utils/publishEvent');
  */
 async function publishIvaResponse(pedidos) {
   const payload = {
-    topic: 'iva.respuesta',
-    payload: {
-      pedidos: pedidos.map(pedido => ({
-        pedidoId: pedido.pedidoId,
-        fecha: pedido.fecha,
-        subtotal: pedido.subtotal,
-        montoIva: pedido.montoIva,
-        total: pedido.total
-      }))
-    }
+    pedidos: pedidos.map(pedido => ({
+      pedidoId: pedido.pedidoId,
+      fecha: pedido.fecha,
+      subtotal: pedido.subtotal,
+      montoIva: pedido.montoIva,
+      total: pedido.total
+    }))
   };
 
-  return await publishEvent(payload);
+  return await publishEvent('iva.respuesta', payload);
 }
 
 module.exports = {
