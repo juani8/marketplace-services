@@ -39,6 +39,7 @@ Este documento detalla todos los eventos que el sistema **escucha** y **publica*
 3. Crea la orden en base de datos con estado 'pendiente'
 4. Actualiza stock de productos (reserva)
 5. **Publica evento `pedido.confirmar`** (ver sección de eventos publicados)
+6. **Actualiza automáticamente el estado de la orden a 'listo'** (preparada para entrega)
 
 ---
 
@@ -565,7 +566,7 @@ Este documento detalla todos los eventos que el sistema **escucha** y **publica*
 ## 📊 Flujo Típico de Eventos
 
 ### Flujo de Pedido Completo:
-1. **Recibe:** `pedido.creado` → Valida y crea orden
+1. **Recibe:** `pedido.creado` → Valida, crea orden y actualiza a 'listo'
 2. **Publica:** `pedido.confirmar` → Confirma procesamiento
 3. **Publica:** `stock.actualizado` → Notifica reducción de stock
 4. **Recibe:** `delivery.successful` → Finaliza orden

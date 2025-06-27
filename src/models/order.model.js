@@ -567,12 +567,12 @@ const OrderModel = {
       
       // Validar transiciones de estado válidas
       const transicionesValidas = {
-        'pendiente': ['aceptada', 'rechazada'],
+        'pendiente': ['aceptada', 'rechazada', 'listo'], // agregamos listo para automatizar flujo
         'aceptada': ['listo', 'cancelada'], 
         'listo': ['finalizada', 'cancelada'],
-        'rechazada': [],
-        'cancelada': [],
-        'finalizada': []
+        'rechazada': [], // estado terminal
+        'cancelada': [], // estado terminal
+        'finalizada': [] // estado terminal (entregado)
       };
 
       if (!transicionesValidas[estadoActual] || !transicionesValidas[estadoActual].includes(nuevoEstado)) {

@@ -12,8 +12,9 @@ async function processEvent(event) {
       return false;
     }
 
-    // Validar que el estado sea 'ENTREGADO'
-    if (event.payload.estado !== 'ENTREGADO') {
+    // Validar que el estado sea 'ENTREGADO' o 'entregado'
+    const estadoNormalizado = event.payload.estado.toUpperCase();
+    if (estadoNormalizado !== 'ENTREGADO') {
       console.log(`Evento pedido.entregado recibido con estado ${event.payload.estado}, ignorando.`);
       return true; // No es error, simplemente no procesamos
     }
