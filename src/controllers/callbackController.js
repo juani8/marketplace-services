@@ -69,14 +69,21 @@ async function processEvent(req, res) {
     console.log('Tópico identificado:', topic);
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
 
-    // TODO: Implementar el procesamiento según el tipo de evento
-    // Por ejemplo:
-    // switch (topic) {
-    //   case 'tenant.creado':
-    //     await processTenantCreado(payload);
-    //     break;
-    //   // ... otros casos
-    // }
+        // Buscar el listener correspondiente al tópico
+    const listener = listeners[topic];
+    
+    if (listener && typeof listener.processEvent === 'function') {
+      console.log(`Procesando evento con listener para tópico: ${topic}`);
+      
+      try {
+        const success = await listener.processEvent({ topic, payload });
+        console.log(`Resultado del procesamiento: ${success ? 'Exitoso' : 'Fallido'}`);
+      } catch (listenerError) {
+        console.error(`Error en listener para tópico ${topic}:`, listenerError);
+      }
+    } else {
+      console.log(`No se encontró listener para el tópico: ${topic}`);
+    }
     
     // Responder 204 para indicar que procesamos correctamente
     res.sendStatus(204);
