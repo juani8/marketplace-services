@@ -277,10 +277,42 @@ const registerInternalUser = async (req, res) => {
       );
       comercios = comerciosResult.rows.map(row => row.comercio_id);
     } else if (rol === 'operador') {
+      // Validar que comercios_ids sea un array válido
+      if (!comercios_ids || !Array.isArray(comercios_ids)) {
+        return res.status(400).json({ 
+          message: 'comercios_ids es requerido y debe ser un array para usuarios operadores' 
+        });
+      }
+      
+      if (comercios_ids.length === 0) {
+        return res.status(400).json({ 
+          message: 'comercios_ids no puede estar vacío para usuarios operadores' 
+        });
+      }
+      
+      // Verificar que todos los comercios_ids pertenezcan al tenant
+      const comerciosValidation = await pool.query(
+        `SELECT comercio_id FROM comercios WHERE comercio_id = ANY($1) AND tenant_id = $2`,
+        [comercios_ids, tenant_id]
+      );
+      
+      if (comerciosValidation.rows.length !== comercios_ids.length) {
+        return res.status(400).json({ 
+          message: 'Uno o más comercios no existen o no pertenecen a tu tenant' 
+        });
+      }
+      
       // Asociar solo a los comercios recibidos por parámetro
       comercios = comercios_ids;
     } else {
       return res.status(400).json({ message: 'Rol no válido' });
+    }
+
+    // Validar que comercios no esté vacío antes de iterar
+    if (!comercios || comercios.length === 0) {
+      return res.status(400).json({ 
+        message: 'No hay comercios disponibles para asociar al usuario' 
+      });
     }
 
     // Insertar en usuario_comercio
