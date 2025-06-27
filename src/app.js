@@ -17,10 +17,7 @@ const callbackRoutes = require('./routes/callbackRoutes');
 const app = express();
 
 // ✅ CORS antes que nada
-app.use(cors({
-  origin: ['https://marketplace.deliver.ar', 'http://localhost:5173'],
-  credentials: true
-}));
+app.use(cors());
 
 app.use(morgan('dev'));
 app.use(express.json());
