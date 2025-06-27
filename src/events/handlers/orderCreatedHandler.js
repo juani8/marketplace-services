@@ -40,6 +40,11 @@ async function handle(event) {
 
     console.log(`Pedido ${orderData.pedidoId} creado exitosamente en estado 'pendiente'`);
 
+    // Reducir stock de los productos
+    await OrderModel.reduceStock(orderData.pedidoId);
+
+    console.log(`Stock reducido para pedido ${orderData.pedidoId}`);
+
     // Publicar confirmación
     await publishOrderConfirmation(orderData);
 

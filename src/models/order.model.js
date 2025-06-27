@@ -596,6 +596,108 @@ const OrderModel = {
       client.release();
     }
   },
+
+  // Reducir stock cuando se crea una orden
+  async reduceStock(ordenId) {
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+
+      // Obtener la orden con sus productos
+      const orderQuery = `
+        SELECT 
+          o.comercio_id,
+          o.tenant_id,
+          json_agg(
+            json_build_object(
+              'producto_id', op.producto_id,
+              'cantidad', op.cantidad
+            )
+          ) as productos
+        FROM ordenes o
+        INNER JOIN ordenes_productos op ON o.orden_id = op.orden_id
+        WHERE o.orden_id = $1
+        GROUP BY o.comercio_id, o.tenant_id
+      `;
+
+      const orderResult = await client.query(orderQuery, [ordenId]);
+      
+      if (orderResult.rows.length === 0) {
+        throw new Error(`Orden ${ordenId} no encontrada`);
+      }
+
+      const orden = orderResult.rows[0];
+
+      // Reducir stock para cada producto
+      for (const producto of orden.productos) {
+        // Obtener información completa del producto antes de actualizar
+        const infoQuery = `
+          SELECT 
+            sc.cantidad_stock as cantidad_anterior,
+            p.producto_id,
+            p.nombre_producto,
+            p.descripcion,
+            p.precio,
+            p.categoria_id,
+            c.nombre as categoria_nombre,
+            co.nombre as comercio_nombre,
+            co.tenant_id
+          FROM stock_comercio sc
+          INNER JOIN productos p ON sc.producto_id = p.producto_id
+          INNER JOIN comercios co ON sc.comercio_id = co.comercio_id
+          LEFT JOIN categorias c ON p.categoria_id = c.categoria_id
+          WHERE sc.comercio_id = $1 AND sc.producto_id = $2
+        `;
+        
+        const infoResult = await client.query(infoQuery, [orden.comercio_id, producto.producto_id]);
+        const stockInfo = infoResult.rows[0];
+
+        if (stockInfo) {
+          // Reducir stock
+          const updateQuery = `
+            UPDATE stock_comercio 
+            SET cantidad_stock = cantidad_stock - $1
+            WHERE comercio_id = $2 AND producto_id = $3
+          `;
+          
+          await client.query(updateQuery, [producto.cantidad, orden.comercio_id, producto.producto_id]);
+
+          // Calcular nueva cantidad
+          const cantidadNueva = stockInfo.cantidad_anterior - producto.cantidad;
+
+          // Publicar evento de stock actualizado (después del commit)
+          setImmediate(async () => {
+            try {
+              await publishStockUpdated({
+                comercio_id: orden.comercio_id,
+                comercio_nombre: stockInfo.comercio_nombre,
+                tenant_id: stockInfo.tenant_id,
+                producto_id: stockInfo.producto_id,
+                nombre_producto: stockInfo.nombre_producto,
+                descripcion: stockInfo.descripcion,
+                precio: stockInfo.precio,
+                categoria_id: stockInfo.categoria_id,
+                categoria_nombre: stockInfo.categoria_nombre,
+                cantidad_anterior: stockInfo.cantidad_anterior,
+                cantidad_nueva: cantidadNueva
+              });
+            } catch (eventError) {
+              console.error('Error publicando evento stock.actualizado:', eventError);
+            }
+          });
+        }
+      }
+
+      await client.query('COMMIT');
+      return true;
+
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
+  },
 };
 
-module.exports = OrderModel; 
+module.exports = OrderModel;
