@@ -178,7 +178,17 @@ const registerTenant = async (req, res) => {
       const completeUser = await UserModel.findByEmailWithDetails(email);
       const tokens = JWTService.generateTokens(completeUser);
 
-      // 6. Publicar evento tenant.creado
+      // Respuesta exitosa
+      const response = {
+        message: 'Tenant y usuario creados correctamente',
+        user: userResult.rows[0],
+        tenant_id: tenantId,
+        tokens: tokens
+      };
+
+      res.status(201).json(response);
+
+      // 6. Publicar evento tenant.creado SOLO si todo fue exitoso
       try {
         const tenantForEvent = {
           tenant_id: tenantId,
@@ -207,14 +217,6 @@ const registerTenant = async (req, res) => {
         console.error('Error publishing tenant.creado event:', eventError);
         // No devolver error al frontend, el tenant se creó correctamente
       }
-
-      // Respuesta exitosa
-      res.status(201).json({
-        message: 'Tenant y usuario creados correctamente',
-        user: userResult.rows[0],
-        tenant_id: tenantId,
-        tokens: tokens
-      });
 
     } catch (transactionError) {
       await client.query('ROLLBACK');

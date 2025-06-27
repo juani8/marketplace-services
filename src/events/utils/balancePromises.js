@@ -4,10 +4,10 @@ const pendingBalanceRequests = new Map();
 /**
  * Crea una promesa para esperar la respuesta de balance
  * @param {string} traceId - ID único de la solicitud
- * @param {number} timeout - Timeout en milisegundos (default: 30 segundos)
+ * @param {number} timeout - Timeout en milisegundos (default: 60 segundos)
  * @returns {Promise} Promesa que se resuelve cuando llega la respuesta
  */
-function createBalancePromise(traceId, timeout = 30000) {
+function createBalancePromise(traceId, timeout = 60000) {
   return new Promise((resolve, reject) => {
     // Configurar timeout
     const timeoutId = setTimeout(() => {

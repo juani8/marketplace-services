@@ -1,6 +1,6 @@
 const TenantModel = require('../models/tenant.model');
 const { geocodeAddress } = require('../services/geocodingService');
-const { publishEvent } = require('../events/utils/publishEvent');
+const publishEvent = require('../events/utils/publishEvent');
 const { createBalancePromise } = require('../events/utils/balancePromises');
 const { publishTenantUpdated, publishTenantDeleted } = require('../events/publishers/tenantPublisher');
 
