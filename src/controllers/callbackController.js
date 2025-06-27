@@ -3,13 +3,15 @@ const ivaPedidoListener = require('../events/subscribers/ivaOrderListener');
 const ventasMesListener = require('../events/subscribers/ventasMesListener');
 const deliverySuccessfulListener = require('../events/subscribers/deliverySuccessfulListener');
 const deliveryFailedListener = require('../events/subscribers/deliveryFailedListener');
+const balancesResponseListener = require('../events/subscribers/balancesResponseListener');
 
 // Mapa de listeners por topic
 const listeners = {
   'iva.pedido': ivaPedidoListener,
   'ventas.mes': ventasMesListener,
-  'delivery.successful': deliverySuccessfulListener,
-  'delivery.failed': deliveryFailedListener
+  'pedido.entregado': deliverySuccessfulListener,
+  'pedido.cancelado': deliveryFailedListener,
+  'get.balances.response': balancesResponseListener
 };
 
 /**
