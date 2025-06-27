@@ -10,7 +10,8 @@ async function publishStockUpdated(stockData) {
     comercio: {
       comercio_id: stockData.comercio_id,
       nombre: stockData.comercio_nombre,
-      tenant_id: stockData.tenant_id
+      tenant_id: stockData.tenant_id,
+      tenant_nombre: stockData.tenant_nombre
     },
     producto: {
       producto_id: stockData.producto_id,
