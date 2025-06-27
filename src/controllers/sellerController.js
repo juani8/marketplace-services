@@ -139,12 +139,15 @@ async function getComercioById(req, res) {
       });
     }
 
-    // Si no es admin, verificar que el usuario tiene acceso a este comercio
-    if (req.user.rol !== 'admin' && !req.user.comercios_autorizados_id.includes(parseInt(id))) {
-      return res.status(403).json({
-        success: false,
-        message: 'No tienes permisos para acceder a este comercio'
-      });
+    // Si no es admin, verificar que el usuario tiene acceso a este comercio en la base de datos
+    if (req.user.rol !== 'admin') {
+      const hasAccess = await SellerModel.hasUserAccessToComercio(req.user.usuario_id, parseInt(id));
+      if (!hasAccess) {
+        return res.status(403).json({
+          success: false,
+          message: 'No tienes permisos para acceder a este comercio'
+        });
+      }
     }
 
     // Obtener y formatear horarios
@@ -344,12 +347,15 @@ async function patchComercio(req, res) {
       });
     }
 
-    // Si no es admin, verificar que el usuario tiene acceso a este comercio
-    if (req.user.rol !== 'admin' && !req.user.comercios_autorizados_id.includes(parseInt(id))) {
-      return res.status(403).json({
-        success: false,
-        message: 'No tienes permisos para modificar este comercio'
-      });
+    // Si no es admin, verificar que el usuario tiene acceso a este comercio en la base de datos
+    if (req.user.rol !== 'admin') {
+      const hasAccess = await SellerModel.hasUserAccessToComercio(req.user.usuario_id, parseInt(id));
+      if (!hasAccess) {
+        return res.status(403).json({
+          success: false,
+          message: 'No tienes permisos para modificar este comercio'
+        });
+      }
     }
 
     // Extraer horarios del update si están presentes
@@ -485,12 +491,15 @@ async function deleteComercio(req, res) {
       });
     }
 
-    // Si no es admin, verificar que el usuario tiene acceso a este comercio
-    if (req.user.rol !== 'admin' && !req.user.comercios_autorizados_id.includes(parseInt(id))) {
-      return res.status(403).json({
-        success: false,
-        message: 'No tienes permisos para eliminar este comercio'
-      });
+    // Si no es admin, verificar que el usuario tiene acceso a este comercio en la base de datos
+    if (req.user.rol !== 'admin') {
+      const hasAccess = await SellerModel.hasUserAccessToComercio(req.user.usuario_id, parseInt(id));
+      if (!hasAccess) {
+        return res.status(403).json({
+          success: false,
+          message: 'No tienes permisos para eliminar este comercio'
+        });
+      }
     }
 
     const comercioEliminado = await SellerModel.delete(parseInt(id));
@@ -551,12 +560,15 @@ async function getComercioProducts(req, res) {
       });
     }
 
-    // Si no es admin, verificar que el usuario tiene acceso a este comercio
-    if (req.user.rol !== 'admin' && !req.user.comercios_autorizados_id.includes(comercioId)) {
-      return res.status(403).json({
-        success: false,
-        message: 'No tienes permisos para acceder a este comercio'
-      });
+    // Si no es admin, verificar que el usuario tiene acceso a este comercio en la base de datos
+    if (req.user.rol !== 'admin') {
+      const hasAccess = await SellerModel.hasUserAccessToComercio(req.user.usuario_id, comercioId);
+      if (!hasAccess) {
+        return res.status(403).json({
+          success: false,
+          message: 'No tienes permisos para acceder a este comercio'
+        });
+      }
     }
 
     // Obtener productos con stock
@@ -638,12 +650,15 @@ async function getProductStock(req, res) {
       });
     }
 
-    // Si no es admin, verificar que el usuario tiene acceso a este comercio
-    if (req.user.rol !== 'admin' && !req.user.comercios_autorizados_id.includes(comercioId)) {
-      return res.status(403).json({
-        success: false,
-        message: 'No tienes permisos para acceder a este comercio'
-      });
+    // Si no es admin, verificar que el usuario tiene acceso a este comercio en la base de datos
+    if (req.user.rol !== 'admin') {
+      const hasAccess = await SellerModel.hasUserAccessToComercio(req.user.usuario_id, comercioId);
+      if (!hasAccess) {
+        return res.status(403).json({
+          success: false,
+          message: 'No tienes permisos para acceder a este comercio'
+        });
+      }
     }
 
     // Verificar que el producto existe y pertenece al tenant del comercio
@@ -749,12 +764,15 @@ async function updateProductStock(req, res) {
       });
     }
 
-    // Si no es admin, verificar que el usuario tiene acceso a este comercio
-    if (req.user.rol !== 'admin' && !req.user.comercios_autorizados_id.includes(comercioId)) {
-      return res.status(403).json({
-        success: false,
-        message: 'No tienes permisos para acceder a este comercio'
-      });
+    // Si no es admin, verificar que el usuario tiene acceso a este comercio en la base de datos
+    if (req.user.rol !== 'admin') {
+      const hasAccess = await SellerModel.hasUserAccessToComercio(req.user.usuario_id, comercioId);
+      if (!hasAccess) {
+        return res.status(403).json({
+          success: false,
+          message: 'No tienes permisos para acceder a este comercio'
+        });
+      }
     }
 
     // Verificar que el producto existe
