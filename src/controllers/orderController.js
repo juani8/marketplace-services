@@ -28,7 +28,7 @@ async function getOrdersByComercio(req, res) {
     }
 
     // Si no es admin, verificar que el usuario tiene acceso a este comercio
-    if (req.user.rol !== 'admin' && !req.user.comercios_ids.includes(parseInt(comercio_id))) {
+    if (req.user.rol !== 'admin' && !req.user.comercios_autorizados_id.includes(parseInt(comercio_id))) {
       return res.status(403).json({
         success: false,
         message: 'No tienes permisos para acceder a las órdenes de este comercio'

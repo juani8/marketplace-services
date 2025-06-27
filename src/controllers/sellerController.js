@@ -140,7 +140,7 @@ async function getComercioById(req, res) {
     }
 
     // Si no es admin, verificar que el usuario tiene acceso a este comercio
-    if (req.user.rol !== 'admin' && !req.user.comercios_ids.includes(parseInt(id))) {
+    if (req.user.rol !== 'admin' && !req.user.comercios_autorizados_id.includes(parseInt(id))) {
       return res.status(403).json({
         success: false,
         message: 'No tienes permisos para acceder a este comercio'
@@ -345,7 +345,7 @@ async function patchComercio(req, res) {
     }
 
     // Si no es admin, verificar que el usuario tiene acceso a este comercio
-    if (req.user.rol !== 'admin' && !req.user.comercios_ids.includes(parseInt(id))) {
+    if (req.user.rol !== 'admin' && !req.user.comercios_autorizados_id.includes(parseInt(id))) {
       return res.status(403).json({
         success: false,
         message: 'No tienes permisos para modificar este comercio'
@@ -486,7 +486,7 @@ async function deleteComercio(req, res) {
     }
 
     // Si no es admin, verificar que el usuario tiene acceso a este comercio
-    if (req.user.rol !== 'admin' && !req.user.comercios_ids.includes(parseInt(id))) {
+    if (req.user.rol !== 'admin' && !req.user.comercios_autorizados_id.includes(parseInt(id))) {
       return res.status(403).json({
         success: false,
         message: 'No tienes permisos para eliminar este comercio'
@@ -552,7 +552,7 @@ async function getComercioProducts(req, res) {
     }
 
     // Si no es admin, verificar que el usuario tiene acceso a este comercio
-    if (req.user.rol !== 'admin' && !req.user.comercios_ids.includes(comercioId)) {
+    if (req.user.rol !== 'admin' && !req.user.comercios_autorizados_id.includes(comercioId)) {
       return res.status(403).json({
         success: false,
         message: 'No tienes permisos para acceder a este comercio'
@@ -639,7 +639,7 @@ async function getProductStock(req, res) {
     }
 
     // Si no es admin, verificar que el usuario tiene acceso a este comercio
-    if (req.user.rol !== 'admin' && !req.user.comercios_ids.includes(comercioId)) {
+    if (req.user.rol !== 'admin' && !req.user.comercios_autorizados_id.includes(comercioId)) {
       return res.status(403).json({
         success: false,
         message: 'No tienes permisos para acceder a este comercio'
@@ -750,7 +750,7 @@ async function updateProductStock(req, res) {
     }
 
     // Si no es admin, verificar que el usuario tiene acceso a este comercio
-    if (req.user.rol !== 'admin' && !req.user.comercios_ids.includes(comercioId)) {
+    if (req.user.rol !== 'admin' && !req.user.comercios_autorizados_id.includes(comercioId)) {
       return res.status(403).json({
         success: false,
         message: 'No tienes permisos para acceder a este comercio'

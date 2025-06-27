@@ -92,7 +92,7 @@ Authorization: Bearer <tu_jwt_token>
   "email": "juan@ejemplo.com",
   "rol": "admin",
   "tenant_nombre": "Mi Negocio",
-  "comercios_ids": [1, 2, 3]
+  "comercios_autorizados_id": [1, 2, 3]
 }
 ```
 
