@@ -506,18 +506,21 @@ const OrderModel = {
           o.fecha_creacion,
           o.total,
           o.direccion_entrega,
-          json_agg(
-            json_build_object(
-              'producto_id', op.producto_id,
-              'nombre_producto', p.nombre_producto,
-              'cantidad', op.cantidad,
-              'precio_unitario', op.precio_unitario,
-              'subtotal', op.subtotal
-            )
+          COALESCE(
+            json_agg(
+              json_build_object(
+                'producto_id', op.producto_id,
+                'nombre_producto', p.nombre_producto,
+                'cantidad', op.cantidad,
+                'precio_unitario', op.precio_unitario,
+                'subtotal', op.subtotal
+              )
+            ) FILTER (WHERE op.producto_id IS NOT NULL),
+            '[]'::json
           ) as productos
         FROM ordenes o
-        INNER JOIN ordenes_productos op ON o.orden_id = op.orden_id
-        INNER JOIN productos p ON op.producto_id = p.producto_id
+        LEFT JOIN ordenes_productos op ON o.orden_id = op.orden_id
+        LEFT JOIN productos p ON op.producto_id = p.producto_id
         WHERE o.estado = 'finalizada'
         AND o.fecha_creacion BETWEEN $1 AND $2
         GROUP BY 
