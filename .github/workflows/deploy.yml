@@ -44,4 +44,3 @@ jobs:
             export JWT_REFRESH_EXPIRES_IN="${{ secrets.JWT_REFRESH_EXPIRES_IN }}"
             chmod +x ~/deploy-backend.sh
             ~/deploy-backend.sh
-
