@@ -2,6 +2,10 @@ let authToken = null;
 
 async function getAuthToken() {
   try {
+    if (!process.env.HUB_USERNAME || !process.env.HUB_PASSWORD) {
+      throw new Error('Las credenciales del Hub (HUB_USERNAME y HUB_PASSWORD) son requeridas en el archivo .env');
+    }
+
     const url = new URL('https://hub.deliver.ar/auth/login');
     const response = await fetch(url, {
       method: 'POST',
@@ -10,8 +14,8 @@ async function getAuthToken() {
         'Accept': 'application/json'
       },
       body: JSON.stringify({
-        username: 'marketplace-service',
-        password: '12345'
+        username: process.env.HUB_USERNAME,
+        password: process.env.HUB_PASSWORD
       })
     });
 

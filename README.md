@@ -71,6 +71,10 @@ CLOUDINARY_API_SECRET=your_api_secret
 # JWT Secrets (generar con crypto.randomBytes(64).toString('hex'))
 JWT_SECRET=your_jwt_secret_128_chars
 JWT_REFRESH_SECRET=your_refresh_secret_128_chars
+
+# Hub de Eventos
+HUB_USERNAME=marketplace-service
+HUB_PASSWORD=12345
 ```
 
 ---
