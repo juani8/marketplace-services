@@ -9,6 +9,9 @@ router.get('/', authenticateToken, tenantController.getAllTenants);
 // POST /api/tenants (crear tenant - solo para súper admins, por ahora protegido)
 router.post('/', authenticateToken, tenantController.createTenant);
 
+// GET /api/tenants/balance (consultar balance de blockchain del tenant autenticado)
+router.get('/balance', authenticateToken, tenantController.getBalance);
+
 // PATCH /api/tenants/:id (solo admins del mismo tenant)
 router.patch('/:tenantId', authenticateToken, tenantController.patchTenant);
 

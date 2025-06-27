@@ -16,23 +16,26 @@ const UserModel = {
           t.nombre as tenant_nombre,
           t.razon_social,
           t.estado as tenant_estado,
-          json_agg(
-            CASE 
-              WHEN c.comercio_id IS NOT NULL 
-              THEN json_build_object(
-                'comercio_id', c.comercio_id,
-                'nombre', c.nombre,
-                'calle', c.calle,
-                'numero', c.numero,
-                'ciudad', c.ciudad,
-                'provincia', c.provincia,
-                'codigo_postal', c.codigo_postal,
-                'lat', c.lat,
-                'lon', c.lon
-              )
-              ELSE NULL
-            END
-          ) FILTER (WHERE c.comercio_id IS NOT NULL) as comercios
+          COALESCE(
+            json_agg(
+              CASE 
+                WHEN c.comercio_id IS NOT NULL 
+                THEN json_build_object(
+                  'comercio_id', c.comercio_id,
+                  'nombre', c.nombre,
+                  'calle', c.calle,
+                  'numero', c.numero,
+                  'ciudad', c.ciudad,
+                  'provincia', c.provincia,
+                  'codigo_postal', c.codigo_postal,
+                  'lat', c.lat,
+                  'lon', c.lon
+                )
+                ELSE NULL
+              END
+            ) FILTER (WHERE c.comercio_id IS NOT NULL),
+            '[]'::json
+          ) as comercios
         FROM usuarios_tenant u
         INNER JOIN tenants t ON u.tenant_id = t.tenant_id
         LEFT JOIN usuario_comercio uc ON u.usuario_id = uc.usuario_id
@@ -76,23 +79,26 @@ const UserModel = {
           t.nombre as tenant_nombre,
           t.razon_social,
           t.estado as tenant_estado,
-          json_agg(
-            CASE 
-              WHEN c.comercio_id IS NOT NULL 
-              THEN json_build_object(
-                'comercio_id', c.comercio_id,
-                'nombre', c.nombre,
-                'calle', c.calle,
-                'numero', c.numero,
-                'ciudad', c.ciudad,
-                'provincia', c.provincia,
-                'codigo_postal', c.codigo_postal,
-                'lat', c.lat,
-                'lon', c.lon
-              )
-              ELSE NULL
-            END
-          ) FILTER (WHERE c.comercio_id IS NOT NULL) as comercios
+          COALESCE(
+            json_agg(
+              CASE 
+                WHEN c.comercio_id IS NOT NULL 
+                THEN json_build_object(
+                  'comercio_id', c.comercio_id,
+                  'nombre', c.nombre,
+                  'calle', c.calle,
+                  'numero', c.numero,
+                  'ciudad', c.ciudad,
+                  'provincia', c.provincia,
+                  'codigo_postal', c.codigo_postal,
+                  'lat', c.lat,
+                  'lon', c.lon
+                )
+                ELSE NULL
+              END
+            ) FILTER (WHERE c.comercio_id IS NOT NULL),
+            '[]'::json
+          ) as comercios
         FROM usuarios_tenant u
         INNER JOIN tenants t ON u.tenant_id = t.tenant_id
         LEFT JOIN usuario_comercio uc ON u.usuario_id = uc.usuario_id

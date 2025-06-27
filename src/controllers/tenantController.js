@@ -1,5 +1,8 @@
 const TenantModel = require('../models/tenant.model');
 const { geocodeAddress } = require('../services/geocodingService');
+const publishEvent = require('../events/utils/publishEvent');
+const { createBalancePromise } = require('../events/utils/balancePromises');
+const { publishTenantUpdated, publishTenantDeleted } = require('../events/publishers/tenantPublisher');
 
 async function getAllTenants(req, res) {
   try {
@@ -184,6 +187,15 @@ async function patchTenant(req, res) {
     }
 
     const updatedTenant = await TenantModel.patch(tenantId, tenantFields, contactFields);
+
+    // Publicar evento tenant.actualizado
+    try {
+      await publishTenantUpdated(updatedTenant, updateData);
+    } catch (eventError) {
+      console.error('Error publishing tenant.actualizado event:', eventError);
+      // No devolver error al frontend, el tenant se actualizó correctamente
+    }
+
     res.json(updatedTenant);
 
   } catch (error) {
@@ -204,6 +216,15 @@ async function deleteTenant(req, res) {
     }
 
     await TenantModel.delete(tenantId);
+
+    // Publicar evento tenant.eliminado
+    try {
+      await publishTenantDeleted(tenantId, existingTenant.nombre);
+    } catch (eventError) {
+      console.error('Error publishing tenant.eliminado event:', eventError);
+      // No devolver error al frontend, el tenant se eliminó correctamente
+    }
+
     res.status(200).json({ 
       message: 'Tenant eliminado',
       tenant_id: parseInt(tenantId)
@@ -217,4 +238,73 @@ async function deleteTenant(req, res) {
   }
 }
 
-module.exports = { getAllTenants, createTenant, patchTenant, deleteTenant };
+async function getBalance(req, res) {
+  try {
+    // Obtener tenant_id del JWT del usuario autenticado
+    const tenantId = req.user.tenant_id;
+
+    if (!tenantId) {
+      return res.status(400).json({ 
+        message: 'Usuario no tiene tenant asociado' 
+      });
+    }
+
+    // Consultar el email del tenant usando el modelo
+    const result = await TenantModel.getEmailByTenantId(tenantId);
+
+    if (!result.success) {
+      const statusCode = result.error.includes('no encontrado') ? 404 : 400;
+      return res.status(statusCode).json({ 
+        message: result.error 
+      });
+    }
+
+    // Usar tenant_id como traceId único
+    const traceId = tenantId.toString();
+
+    // Crear promesa para esperar la respuesta
+    const balancePromise = createBalancePromise(traceId, 30000); // 30 segundos timeout
+
+    // Publicar evento para solicitar balance
+    try {
+      await publishEvent('get.balances.request', {
+        traceData: {
+          originModule: 'marketplace-service',
+          traceId: traceId
+        },
+        email: result.email
+      });
+    } catch (eventError) {
+      console.error('Error publishing get.balances.request event:', eventError);
+      return res.status(503).json({ 
+        message: 'Servicio de blockchain no disponible temporalmente' 
+      });
+    }
+
+    // Esperar la respuesta de blockchain
+    try {
+      const balance = await balancePromise;
+      
+      // Devolver solo los campos importantes al frontend
+      res.status(200).json({
+        fiatBalance: balance.fiatBalance,
+        cryptoBalance: balance.cryptoBalance
+      });
+
+    } catch (timeoutError) {
+      console.error('Timeout esperando respuesta de balance:', timeoutError);
+      res.status(408).json({ 
+        message: 'Timeout esperando respuesta del sistema de blockchain. Intente nuevamente.' 
+      });
+    }
+
+  } catch (error) {
+    console.error('Error solicitando balance:', error);
+    res.status(500).json({ 
+      message: 'Error interno del servidor',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+}
+
+module.exports = { getAllTenants, createTenant, patchTenant, deleteTenant, getBalance };

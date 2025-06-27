@@ -183,19 +183,18 @@ const OrderModel = {
         const stockQuery = `
           SELECT sc.cantidad_stock 
           FROM stock_comercio sc
-          INNER JOIN productos p ON p.producto_id = sc.producto_id
           WHERE sc.comercio_id = $1 
-          AND p.nombre = $2
+          AND sc.producto_id = $2
           FOR UPDATE
         `;
         
-        const stockResult = await client.query(stockQuery, [comercioId, producto.nombre]);
+        const stockResult = await client.query(stockQuery, [comercioId, producto.producto_id]);
         
-        if (stockResult.rows.length === 0 || stockResult.rows[0].cantidad_stock < producto.cant) {
+        if (stockResult.rows.length === 0 || stockResult.rows[0].cantidad_stock < producto.cantidad) {
           await client.query('ROLLBACK');
           return {
             success: false,
-            message: `Stock insuficiente para el producto: ${producto.nombre}`
+            message: `Stock insuficiente para el producto ID: ${producto.producto_id}`
           };
         }
       }
@@ -283,7 +282,7 @@ const OrderModel = {
     const query = `
       SELECT producto_id 
       FROM productos 
-      WHERE nombre = $1
+      WHERE nombre_producto = $1
     `;
     const result = await client.query(query, [nombre]);
     return result.rows[0]?.producto_id;
@@ -310,7 +309,7 @@ const OrderModel = {
         RETURNING orden_id
       `;
 
-      const total = orderData.productos.reduce((sum, p) => sum + (p.subPrecio || 0), 0);
+      const total = orderData.productos.reduce((sum, p) => sum + (p.precio_unitario * p.cantidad), 0);
       
       const orderValues = [
         orderData.pedidoId,
@@ -339,8 +338,8 @@ const OrderModel = {
         const productValues = [
           orderData.pedidoId,
           producto.producto_id,
-          producto.precio,
-          producto.cant
+          producto.precio_unitario,
+          producto.cantidad
         ];
 
         await client.query(productQuery, productValues);
@@ -535,6 +534,63 @@ const OrderModel = {
     } catch (error) {
       console.error('Error en findFinalizadasByDateRange:', error);
       throw error;
+    }
+  },
+
+  /**
+   * Actualiza el estado de una orden
+   * @param {string} orderId - ID de la orden 
+   * @param {string} nuevoEstado - Nuevo estado de la orden
+   * @returns {Promise<boolean>} true si se actualizó correctamente
+   */
+  async updateStatus(orderId, nuevoEstado) {
+    const client = await pool.connect();
+    
+    try {
+      // Primero verificar que la orden existe
+      const checkQuery = `
+        SELECT orden_id, estado 
+        FROM ordenes 
+        WHERE orden_id = $1
+      `;
+      
+      const checkResult = await client.query(checkQuery, [orderId]);
+      
+      if (checkResult.rows.length === 0) {
+        throw new Error(`Orden ${orderId} no encontrada`);
+      }
+
+      const estadoActual = checkResult.rows[0].estado;
+      
+      // Validar transiciones de estado válidas
+      const transicionesValidas = {
+        'pendiente': ['aceptada', 'rechazada'],
+        'aceptada': ['listo', 'cancelada'], 
+        'listo': ['finalizada', 'cancelada'],
+        'rechazada': [],
+        'cancelada': [],
+        'finalizada': []
+      };
+
+      if (!transicionesValidas[estadoActual] || !transicionesValidas[estadoActual].includes(nuevoEstado)) {
+        throw new Error(`Transición de estado inválida: ${estadoActual} -> ${nuevoEstado}`);
+      }
+
+      // Actualizar el estado
+      const updateQuery = `
+        UPDATE ordenes 
+        SET estado = $1, fecha_actualizacion = CURRENT_TIMESTAMP
+        WHERE orden_id = $2
+      `;
+      
+      await client.query(updateQuery, [nuevoEstado, orderId]);
+      return true;
+
+    } catch (error) {
+      console.error(`Error actualizando estado de orden ${orderId}:`, error);
+      throw error;
+    } finally {
+      client.release();
     }
   },
 };

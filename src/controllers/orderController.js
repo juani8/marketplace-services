@@ -27,12 +27,15 @@ async function getOrdersByComercio(req, res) {
       });
     }
 
-    // Si no es admin, verificar que el usuario tiene acceso a este comercio
-    if (req.user.rol !== 'admin' && !req.user.comercios_ids.includes(parseInt(comercio_id))) {
-      return res.status(403).json({
-        success: false,
-        message: 'No tienes permisos para acceder a las órdenes de este comercio'
-      });
+    // Si no es admin, verificar que el usuario tiene acceso a este comercio en la base de datos
+    if (req.user.rol !== 'admin') {
+      const hasAccess = await SellerModel.hasUserAccessToComercio(req.user.usuario_id, parseInt(comercio_id));
+      if (!hasAccess) {
+        return res.status(403).json({
+          success: false,
+          message: 'No tienes permisos para acceder a las órdenes de este comercio'
+        });
+      }
     }
     
     const orders = await OrderModel.getByComercioId(comercio_id);

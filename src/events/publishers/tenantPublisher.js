@@ -13,15 +13,7 @@ async function publishTenantCreated(tenant) {
     cuenta_bancaria: tenant.cuenta_bancaria,
     email: tenant.email,
     telefono: tenant.telefono,
-    direccion_fiscal: {
-      calle: tenant.calle,
-      numero: tenant.numero,
-      ciudad: tenant.ciudad,
-      provincia: tenant.provincia,
-      codigo_postal: tenant.codigo_postal,
-      lat: tenant.lat,
-      lon: tenant.lon
-    },
+    direccion_fiscal: tenant.direccion_fiscal,
     sitio_web: tenant.sitio_web,
     instagram: tenant.instagram,
     estado: tenant.estado,

@@ -247,6 +247,47 @@ const TenantModel = {
   
     return res.rows;
   },
+
+  // Método para obtener el email de un tenant específico
+  async getEmailByTenantId(tenantId) {
+    try {
+      const res = await pool.query(
+        `SELECT dc.email 
+         FROM datos_contacto dc
+         INNER JOIN tenants t ON t.tenant_id = dc.tenant_id
+         WHERE t.tenant_id = $1 AND t.estado = 'activo'`,
+        [tenantId]
+      );
+
+      if (res.rows.length === 0) {
+        return { 
+          success: false, 
+          error: 'Tenant no encontrado o inactivo' 
+        };
+      }
+
+      const email = res.rows[0].email;
+
+      if (!email) {
+        return { 
+          success: false, 
+          error: 'El tenant no tiene email configurado' 
+        };
+      }
+
+      return { 
+        success: true, 
+        email: email 
+      };
+
+    } catch (error) {
+      console.error('Error consultando email del tenant:', error);
+      return { 
+        success: false, 
+        error: 'Error interno consultando tenant' 
+      };
+    }
+  },
 };
 
 module.exports = TenantModel;

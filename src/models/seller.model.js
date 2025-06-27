@@ -501,6 +501,23 @@ const SellerModel = {
       throw error;
     }
   },
+
+  // Verificar si un usuario tiene acceso a un comercio específico
+  async hasUserAccessToComercio(usuarioId, comercioId) {
+    try {
+      const query = `
+        SELECT 1 
+        FROM usuario_comercio uc
+        WHERE uc.usuario_id = $1 AND uc.comercio_id = $2
+      `;
+      
+      const result = await pool.query(query, [usuarioId, comercioId]);
+      return result.rows.length > 0;
+    } catch (error) {
+      console.error('Error en hasUserAccessToComercio:', error);
+      throw error;
+    }
+  },
   
 };
 

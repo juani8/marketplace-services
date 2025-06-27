@@ -8,6 +8,8 @@ const {
   parsearHorarios,
   crearHorariosCompletos
 } = require('../services/timeServices');
+const { publishSellerCreated, publishSellerUpdated } = require('../events/publishers/sellerPublisher');
+const { publishStockUpdated } = require('../events/publishers/stockPublisher');
 
 const DELIVERY_RADIUS_KM = 5; // Radio fijo de entrega
 
@@ -137,12 +139,15 @@ async function getComercioById(req, res) {
       });
     }
 
-    // Si no es admin, verificar que el usuario tiene acceso a este comercio
-    if (req.user.rol !== 'admin' && !req.user.comercios_ids.includes(parseInt(id))) {
-      return res.status(403).json({
-        success: false,
-        message: 'No tienes permisos para acceder a este comercio'
-      });
+    // Si no es admin, verificar que el usuario tiene acceso a este comercio en la base de datos
+    if (req.user.rol !== 'admin') {
+      const hasAccess = await SellerModel.hasUserAccessToComercio(req.user.usuario_id, parseInt(id));
+      if (!hasAccess) {
+        return res.status(403).json({
+          success: false,
+          message: 'No tienes permisos para acceder a este comercio'
+        });
+      }
     }
 
     // Obtener y formatear horarios
@@ -274,6 +279,14 @@ async function createComercio(req, res) {
     const horariosComercio = await SellerModel.getHorarios(nuevoComercio.comercio_id);
     nuevoComercio.horarios = formatearHorarios(horariosComercio);
 
+    // Publicar evento comercio.creado
+    try {
+      await publishSellerCreated(nuevoComercio);
+    } catch (eventError) {
+      console.error('Error publishing comercio.creado event:', eventError);
+      // No devolver error al frontend, el comercio se creó correctamente
+    }
+
     res.status(201).json({
       success: true,
       message: 'Comercio creado exitosamente. Los días sin horarios especificados se configuraron como cerrados.',
@@ -334,12 +347,15 @@ async function patchComercio(req, res) {
       });
     }
 
-    // Si no es admin, verificar que el usuario tiene acceso a este comercio
-    if (req.user.rol !== 'admin' && !req.user.comercios_ids.includes(parseInt(id))) {
-      return res.status(403).json({
-        success: false,
-        message: 'No tienes permisos para modificar este comercio'
-      });
+    // Si no es admin, verificar que el usuario tiene acceso a este comercio en la base de datos
+    if (req.user.rol !== 'admin') {
+      const hasAccess = await SellerModel.hasUserAccessToComercio(req.user.usuario_id, parseInt(id));
+      if (!hasAccess) {
+        return res.status(403).json({
+          success: false,
+          message: 'No tienes permisos para modificar este comercio'
+        });
+      }
     }
 
     // Extraer horarios del update si están presentes
@@ -423,6 +439,14 @@ async function patchComercio(req, res) {
     const horariosActualizados = await SellerModel.getHorarios(parseInt(id));
     updatedComercio.horarios = formatearHorarios(horariosActualizados);
 
+    // Publicar evento comercio.actualizado
+    try {
+      await publishSellerUpdated(updatedComercio);
+    } catch (eventError) {
+      console.error('Error publishing comercio.actualizado event:', eventError);
+      // No devolver error al frontend, el comercio se actualizó correctamente
+    }
+
     res.json({
       success: true,
       message: `Comercio actualizado exitosamente.${mensajeHorarios}`,
@@ -467,12 +491,15 @@ async function deleteComercio(req, res) {
       });
     }
 
-    // Si no es admin, verificar que el usuario tiene acceso a este comercio
-    if (req.user.rol !== 'admin' && !req.user.comercios_ids.includes(parseInt(id))) {
-      return res.status(403).json({
-        success: false,
-        message: 'No tienes permisos para eliminar este comercio'
-      });
+    // Si no es admin, verificar que el usuario tiene acceso a este comercio en la base de datos
+    if (req.user.rol !== 'admin') {
+      const hasAccess = await SellerModel.hasUserAccessToComercio(req.user.usuario_id, parseInt(id));
+      if (!hasAccess) {
+        return res.status(403).json({
+          success: false,
+          message: 'No tienes permisos para eliminar este comercio'
+        });
+      }
     }
 
     const comercioEliminado = await SellerModel.delete(parseInt(id));
@@ -533,12 +560,15 @@ async function getComercioProducts(req, res) {
       });
     }
 
-    // Si no es admin, verificar que el usuario tiene acceso a este comercio
-    if (req.user.rol !== 'admin' && !req.user.comercios_ids.includes(comercioId)) {
-      return res.status(403).json({
-        success: false,
-        message: 'No tienes permisos para acceder a este comercio'
-      });
+    // Si no es admin, verificar que el usuario tiene acceso a este comercio en la base de datos
+    if (req.user.rol !== 'admin') {
+      const hasAccess = await SellerModel.hasUserAccessToComercio(req.user.usuario_id, comercioId);
+      if (!hasAccess) {
+        return res.status(403).json({
+          success: false,
+          message: 'No tienes permisos para acceder a este comercio'
+        });
+      }
     }
 
     // Obtener productos con stock
@@ -620,12 +650,15 @@ async function getProductStock(req, res) {
       });
     }
 
-    // Si no es admin, verificar que el usuario tiene acceso a este comercio
-    if (req.user.rol !== 'admin' && !req.user.comercios_ids.includes(comercioId)) {
-      return res.status(403).json({
-        success: false,
-        message: 'No tienes permisos para acceder a este comercio'
-      });
+    // Si no es admin, verificar que el usuario tiene acceso a este comercio en la base de datos
+    if (req.user.rol !== 'admin') {
+      const hasAccess = await SellerModel.hasUserAccessToComercio(req.user.usuario_id, comercioId);
+      if (!hasAccess) {
+        return res.status(403).json({
+          success: false,
+          message: 'No tienes permisos para acceder a este comercio'
+        });
+      }
     }
 
     // Verificar que el producto existe y pertenece al tenant del comercio
@@ -731,12 +764,15 @@ async function updateProductStock(req, res) {
       });
     }
 
-    // Si no es admin, verificar que el usuario tiene acceso a este comercio
-    if (req.user.rol !== 'admin' && !req.user.comercios_ids.includes(comercioId)) {
-      return res.status(403).json({
-        success: false,
-        message: 'No tienes permisos para acceder a este comercio'
-      });
+    // Si no es admin, verificar que el usuario tiene acceso a este comercio en la base de datos
+    if (req.user.rol !== 'admin') {
+      const hasAccess = await SellerModel.hasUserAccessToComercio(req.user.usuario_id, comercioId);
+      if (!hasAccess) {
+        return res.status(403).json({
+          success: false,
+          message: 'No tienes permisos para acceder a este comercio'
+        });
+      }
     }
 
     // Verificar que el producto existe
@@ -748,8 +784,33 @@ async function updateProductStock(req, res) {
       });
     }
 
+    // Obtener stock anterior para el evento
+    const stockAnterior = await SellerModel.getProductStock(comercioId, productoId);
+    const cantidadAnterior = stockAnterior ? stockAnterior.cantidad_stock : 0;
+
     // Actualizar stock
     const stockActualizado = await SellerModel.updateProductStock(comercioId, productoId, cantidadStock);
+
+    // Publicar evento stock.actualizado
+    try {
+      const stockEventData = {
+        comercio_id: comercioId,
+        comercio_nombre: comercio.nombre,
+        tenant_id: comercio.tenant_id,
+        producto_id: productoId,
+        nombre_producto: producto.nombre_producto,
+        descripcion: producto.descripcion,
+        precio: producto.precio,
+        categoria_id: producto.categoria_id,
+        categoria_nombre: producto.categoria_nombre || null,
+        cantidad_anterior: cantidadAnterior,
+        cantidad_nueva: cantidadStock
+      };
+      await publishStockUpdated(stockEventData);
+    } catch (eventError) {
+      console.error('Error publishing stock.actualizado event:', eventError);
+      // No devolver error al frontend, el stock se actualizó correctamente
+    }
 
     res.json({
       success: true,

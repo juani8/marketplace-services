@@ -12,7 +12,6 @@ const productRoutes = require('./routes/productRoutes');
 const promotionsRoutes = require('./routes/promotionsRoutes');
 const authRoutes = require('./routes/authRoutes');
 const orderRoutes = require('./routes/orderRoutes');
-const { getCallback, postCallback } = require('./controllers/callbackController');
 const callbackRoutes = require('./routes/callbackRoutes');
 
 const app = express();
@@ -26,11 +25,6 @@ app.use(cors({
 app.use(morgan('dev'));
 app.use(express.json());
 
-// Rutas raíz para el hub de eventos
-app.get('/', getCallback);  // Verificación de suscripción
-app.post('/', postCallback); // Recepción de eventos
-app.post('/hub/publish', postCallback); // Endpoint de prueba en Swagger
-
 // Rutas
 app.use('/api/tenants', tenantRoutes);
 app.use('/api/sellers', sellerRoutes);
@@ -40,8 +34,9 @@ app.use('/api/promotions', promotionsRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/orders', orderRoutes);
 
-// Rutas alternativas de callback (por si acaso)
-app.use('/callback', callbackRoutes);
+// Rutas para el hub de eventos - tanto en raíz como en /callback
+app.use('/', callbackRoutes);  // Para eventos del Core
+app.use('/callback', callbackRoutes);  // Para nuestra documentación/estructura
 
 // Endpoint de test
 app.get('/api/status', async (req, res) => {

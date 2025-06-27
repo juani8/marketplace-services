@@ -1,15 +1,21 @@
 const deliverySuccessfulHandler = require('../handlers/deliverySuccessfulHandler');
 
 /**
- * Procesa los eventos de delivery.successful recibidos
- * @param {Object} event - Evento recibido del hub
+ * Procesa los eventos de pedido.entregado recibidos
+ * @param {Object} event - Evento recibido del hub con formato { topic: 'pedido.entregado', payload: { pedidoId, estado } }
  */
 async function processEvent(event) {
   try {
     // Validar que el evento tenga la estructura esperada
-    if (!event || !event.payload || !event.payload.orden_id) {
-      console.error('Evento delivery.successful inválido:', event);
+    if (!event || !event.payload || !event.payload.pedidoId || !event.payload.estado) {
+      console.error('Evento pedido.entregado inválido:', event);
       return false;
+    }
+
+    // Validar que el estado sea 'ENTREGADO'
+    if (event.payload.estado !== 'ENTREGADO') {
+      console.log(`Evento pedido.entregado recibido con estado ${event.payload.estado}, ignorando.`);
+      return true; // No es error, simplemente no procesamos
     }
 
     /*
@@ -22,7 +28,7 @@ async function processEvent(event) {
     UPDATE ordenes 
     SET estado = 'finalizada',
         fecha_actualizacion = CURRENT_TIMESTAMP
-    WHERE orden_id = [orden_id];
+    WHERE orden_id = [pedidoId];
 
     Importante: La orden debería estar en estado 'listo' antes de pasar a 'finalizada'
     ya que según el modelo los estados son:
@@ -39,14 +45,14 @@ async function processEvent(event) {
     return result;
 
   } catch (error) {
-    console.error('Error procesando evento delivery.successful:', error);
+    console.error('Error procesando evento pedido.entregado:', error);
     return false;
   }
 }
 
 // Configuración del subscriber
 const subscriber = {
-  topic: 'delivery.successful',
+  topic: 'pedido.entregado',
   processEvent
 };
 
