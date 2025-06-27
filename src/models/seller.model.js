@@ -446,10 +446,12 @@ const SellerModel = {
           p.categoria_id,
           c.nombre as categoria_nombre,
           co.nombre as comercio_nombre,
-          co.tenant_id
+          co.tenant_id,
+          t.nombre as tenant_nombre
         FROM stock_comercio sc
         INNER JOIN productos p ON sc.producto_id = p.producto_id
         INNER JOIN comercios co ON sc.comercio_id = co.comercio_id
+        INNER JOIN tenants t ON co.tenant_id = t.tenant_id
         LEFT JOIN categorias c ON p.categoria_id = c.categoria_id
         WHERE sc.comercio_id = $1 AND sc.producto_id = $2
       `;
