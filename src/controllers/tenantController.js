@@ -2,6 +2,7 @@ const TenantModel = require('../models/tenant.model');
 const { geocodeAddress } = require('../services/geocodingService');
 const { publishEvent } = require('../events/utils/publishEvent');
 const { createBalancePromise } = require('../events/utils/balancePromises');
+const { publishTenantUpdated, publishTenantDeleted } = require('../events/publishers/tenantPublisher');
 
 async function getAllTenants(req, res) {
   try {
@@ -186,6 +187,15 @@ async function patchTenant(req, res) {
     }
 
     const updatedTenant = await TenantModel.patch(tenantId, tenantFields, contactFields);
+
+    // Publicar evento tenant.actualizado
+    try {
+      await publishTenantUpdated(updatedTenant, updateData);
+    } catch (eventError) {
+      console.error('Error publishing tenant.actualizado event:', eventError);
+      // No devolver error al frontend, el tenant se actualizó correctamente
+    }
+
     res.json(updatedTenant);
 
   } catch (error) {
@@ -206,6 +216,15 @@ async function deleteTenant(req, res) {
     }
 
     await TenantModel.delete(tenantId);
+
+    // Publicar evento tenant.eliminado
+    try {
+      await publishTenantDeleted(tenantId, existingTenant.nombre);
+    } catch (eventError) {
+      console.error('Error publishing tenant.eliminado event:', eventError);
+      // No devolver error al frontend, el tenant se eliminó correctamente
+    }
+
     res.status(200).json({ 
       message: 'Tenant eliminado',
       tenant_id: parseInt(tenantId)
@@ -247,16 +266,20 @@ async function getBalance(req, res) {
     const balancePromise = createBalancePromise(traceId, 30000); // 30 segundos timeout
 
     // Publicar evento para solicitar balance
-    await publishEvent({
-      topic: 'get.balances.request',
-      payload: {
+    try {
+      await publishEvent('get.balances.request', {
         traceData: {
           originModule: 'marketplace-service',
           traceId: traceId
         },
         email: result.email
-      }
-    });
+      });
+    } catch (eventError) {
+      console.error('Error publishing get.balances.request event:', eventError);
+      return res.status(503).json({ 
+        message: 'Servicio de blockchain no disponible temporalmente' 
+      });
+    }
 
     // Esperar la respuesta de blockchain
     try {

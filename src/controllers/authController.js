@@ -3,6 +3,7 @@ const bcrypt = require('bcrypt');
 const UserModel = require('../models/user.model');
 const JWTService = require('../services/jwtService');
 const { geocodeAddress } = require('../services/geocodingService');
+const { publishTenantCreated } = require('../events/publishers/tenantPublisher');
 
 const login = async (req, res) => {
   const { email, password } = req.body;
@@ -177,6 +178,36 @@ const registerTenant = async (req, res) => {
       const completeUser = await UserModel.findByEmailWithDetails(email);
       const tokens = JWTService.generateTokens(completeUser);
 
+      // 6. Publicar evento tenant.creado
+      try {
+        const tenantForEvent = {
+          tenant_id: tenantId,
+          nombre,
+          razon_social,
+          cuenta_bancaria,
+          email,
+          telefono,
+          direccion_fiscal: {
+            calle,
+            numero,
+            ciudad,
+            provincia,
+            codigo_postal,
+            lat,
+            lon
+          },
+          sitio_web,
+          instagram,
+          estado: 'activo',
+          fecha_registro: new Date().toISOString(),
+          fecha_actualizacion: new Date().toISOString()
+        };
+        await publishTenantCreated(tenantForEvent);
+      } catch (eventError) {
+        console.error('Error publishing tenant.creado event:', eventError);
+        // No devolver error al frontend, el tenant se creó correctamente
+      }
+
       // Respuesta exitosa
       res.status(201).json({
         message: 'Tenant y usuario creados correctamente',
@@ -199,9 +230,9 @@ const registerTenant = async (req, res) => {
     if (error.code === '23505') { // Unique violation
       return res.status(409).json({ message: 'Ya existe un registro con estos datos' });
     }
-    
+
     res.status(500).json({ 
-      message: 'Error al registrar tenant',
+      message: 'Error interno del servidor',
       error: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }

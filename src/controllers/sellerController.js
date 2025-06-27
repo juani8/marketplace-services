@@ -8,6 +8,8 @@ const {
   parsearHorarios,
   crearHorariosCompletos
 } = require('../services/timeServices');
+const { publishSellerCreated, publishSellerUpdated } = require('../events/publishers/sellerPublisher');
+const { publishStockUpdated } = require('../events/publishers/stockPublisher');
 
 const DELIVERY_RADIUS_KM = 5; // Radio fijo de entrega
 
@@ -274,6 +276,14 @@ async function createComercio(req, res) {
     const horariosComercio = await SellerModel.getHorarios(nuevoComercio.comercio_id);
     nuevoComercio.horarios = formatearHorarios(horariosComercio);
 
+    // Publicar evento comercio.creado
+    try {
+      await publishSellerCreated(nuevoComercio);
+    } catch (eventError) {
+      console.error('Error publishing comercio.creado event:', eventError);
+      // No devolver error al frontend, el comercio se creó correctamente
+    }
+
     res.status(201).json({
       success: true,
       message: 'Comercio creado exitosamente. Los días sin horarios especificados se configuraron como cerrados.',
@@ -422,6 +432,14 @@ async function patchComercio(req, res) {
     // Obtener horarios actualizados para la respuesta
     const horariosActualizados = await SellerModel.getHorarios(parseInt(id));
     updatedComercio.horarios = formatearHorarios(horariosActualizados);
+
+    // Publicar evento comercio.actualizado
+    try {
+      await publishSellerUpdated(updatedComercio);
+    } catch (eventError) {
+      console.error('Error publishing comercio.actualizado event:', eventError);
+      // No devolver error al frontend, el comercio se actualizó correctamente
+    }
 
     res.json({
       success: true,
@@ -748,8 +766,33 @@ async function updateProductStock(req, res) {
       });
     }
 
+    // Obtener stock anterior para el evento
+    const stockAnterior = await SellerModel.getProductStock(comercioId, productoId);
+    const cantidadAnterior = stockAnterior ? stockAnterior.cantidad_stock : 0;
+
     // Actualizar stock
     const stockActualizado = await SellerModel.updateProductStock(comercioId, productoId, cantidadStock);
+
+    // Publicar evento stock.actualizado
+    try {
+      const stockEventData = {
+        comercio_id: comercioId,
+        comercio_nombre: comercio.nombre,
+        tenant_id: comercio.tenant_id,
+        producto_id: productoId,
+        nombre_producto: producto.nombre_producto,
+        descripcion: producto.descripcion,
+        precio: producto.precio,
+        categoria_id: producto.categoria_id,
+        categoria_nombre: producto.categoria_nombre || null,
+        cantidad_anterior: cantidadAnterior,
+        cantidad_nueva: cantidadStock
+      };
+      await publishStockUpdated(stockEventData);
+    } catch (eventError) {
+      console.error('Error publishing stock.actualizado event:', eventError);
+      // No devolver error al frontend, el stock se actualizó correctamente
+    }
 
     res.json({
       success: true,

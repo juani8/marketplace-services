@@ -8,6 +8,7 @@ const uploadCSV = require('../config/csvMulterConfig');
 const { requireAdmin } = require('../middlewares/authMiddleware');
 const csv = require('csv-parser');
 const { Readable } = require('stream');
+const { publishProductUpdated } = require('../events/publishers/productPublisher');
 
 // Obtener todos los productos de un tenant
 async function getProducts(req, res) {
@@ -130,14 +131,24 @@ async function updateProduct(req, res) {
       return res.status(403).json({ message: 'No tienes permisos para modificar este producto' });
     }
 
+    // Guardar los campos que cambiaron para el evento
+    const camposCambiados = [];
+    const { imagenes, ...productoData } = updateData;
+    
+    for (const [campo, valor] of Object.entries(productoData)) {
+      if (product[campo] !== valor) {
+        camposCambiados.push(campo);
+      }
+    }
+
     // Procesar las nuevas imágenes si existen
     let imageUrls = [];
     if (req.files && req.files.length > 0) {
       imageUrls = await ImageUploadService.uploadMultipleImages(req.files);
+      camposCambiados.push('imagenes');
     }
 
     // Actualizar el producto (sin las imágenes)
-    const { imagenes, ...productoData } = updateData;
     const updatedProduct = await ProductoModel.update(productId, productoData);
 
     // Manejar las imágenes
@@ -156,6 +167,29 @@ async function updateProduct(req, res) {
 
     // Obtener el producto actualizado con toda su información
     const productos = await formatearProductos([updatedProduct]);
+
+    // Publicar evento producto.actualizado
+    if (camposCambiados.length > 0) {
+      try {
+        // Obtener datos completos del producto para el evento
+        const productForEvent = {
+          tenant_id: updatedProduct.tenant_id,
+          producto_id: updatedProduct.producto_id,
+          nombre_producto: updatedProduct.nombre_producto,
+          descripcion: updatedProduct.descripcion,
+          precio: updatedProduct.precio,
+          categoria_id: updatedProduct.categoria_id,
+          nombre_categoria: productos[0].categoria?.nombre || null,
+          promociones: productos[0].promociones || [],
+          estado: updatedProduct.estado,
+          campos_cambiados: camposCambiados
+        };
+        await publishProductUpdated(productForEvent);
+      } catch (eventError) {
+        console.error('Error publishing producto.actualizado event:', eventError);
+        // No devolver error al frontend, el producto se actualizó correctamente
+      }
+    }
     
     res.json({
       message: 'Producto actualizado exitosamente',

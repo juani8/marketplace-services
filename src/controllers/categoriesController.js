@@ -1,5 +1,6 @@
 const CategoriaModel = require('../models/categoria.model');
 const ProductoModel = require('../models/producto.model');
+const { publishCategoryCreated } = require('../events/publishers/categoryPublisher');
 
 async function getAllCategories(req, res) {
   try {
@@ -52,6 +53,20 @@ async function createCategory(req, res) {
     }
 
     const nuevaCategoria = await CategoriaModel.create({ nombre, descripcion });
+
+    // Publicar evento categoria.creada
+    try {
+      const categoryForEvent = {
+        categoria_id: nuevaCategoria.categoria_id,
+        tenant_id: req.user.tenant_id,
+        nombre: nuevaCategoria.nombre
+      };
+      await publishCategoryCreated(categoryForEvent);
+    } catch (eventError) {
+      console.error('Error publishing categoria.creada event:', eventError);
+      // No devolver error al frontend, la categoría se creó correctamente
+    }
+
     res.status(201).json(nuevaCategoria);
   } catch (error) {
     console.error('Error al crear categoría:', error);

@@ -6,6 +6,12 @@ const { resolveBalancePromise } = require('../utils/balancePromises');
  */
 async function processEvent(event) {
   try {
+    console.log('\nEVENTO ENTRANTE');
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log('Tópico: get.balances.response');
+    console.log('Datos:', JSON.stringify(event.payload, null, 2));
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+
     // Validar que el evento tenga la estructura esperada
     if (!event || !event.payload) {
       console.error('Evento get.balances.response inválido:', event);
@@ -26,13 +32,6 @@ async function processEvent(event) {
       return true;
     }
 
-    console.log('Balance recibido para email:', email, {
-      fiatBalance,
-      cryptoBalance,
-      lastUpdated,
-      traceId: traceData?.traceId
-    });
-
     // Resolver la promesa pendiente si existe
     if (traceData && traceData.traceId) {
       const resolved = resolveBalancePromise(traceData.traceId, {
@@ -40,11 +39,14 @@ async function processEvent(event) {
         cryptoBalance
       });
 
-      if (resolved) {
-        console.log(`Promesa de balance resuelta para traceId: ${traceData.traceId}`);
-      } else {
-        console.log(`No se encontró promesa pendiente para traceId: ${traceData.traceId}`);
-      }
+      console.log('\nRESOLUCIÓN DE BALANCE');
+      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      console.log('ID de Rastreo:', traceData.traceId);
+      console.log('Email:', email);
+      console.log('Balances:', { fiatBalance, cryptoBalance });
+      console.log('Estado de Resolución:', resolved ? 'Resuelto' : 'No se encontró promesa pendiente');
+      console.log('Última Actualización:', lastUpdated);
+      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
     }
 
     return true;

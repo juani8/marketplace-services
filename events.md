@@ -157,6 +157,40 @@ Este documento detalla todos los eventos que el sistema **escucha** y **publica*
 
 ---
 
+### 7. `get.balances.response`
+**Descripción:** Respuesta con los balances de fiat y crypto de un tenant  
+**Endpoint:** `POST /callback`  
+**Respuesta del sistema:** ❌ No envía respuesta
+
+**Formato de entrada:**
+```json
+{
+  "topic": "get.balances.response",
+  "payload": {
+    "traceData": {
+      "originModule": "marketplace-service",
+      "traceId": "7f5a24c1-09db-4ba4-9023-d542a933cf9e"
+    },
+    "email": "juan.perez@example.com",
+    "fiatBalance": 5000.00,
+    "cryptoBalance": 150.75,
+    "lastUpdated": "2024-01-15T10:30:00Z"
+  }
+}
+```
+
+**Notas sobre traceData:**
+- Es un campo opcional
+- Se utiliza para filtrar si el evento corresponde a este módulo (marketplace-service vs client/delivery)
+- Se devuelve exactamente el mismo traceData recibido en la request para correlacionar la respuesta con el pedido original
+
+**Acciones que realiza:**
+1. Valida que el email corresponda a un tenant existente
+2. Resuelve la promesa pendiente asociada al traceId
+3. Retorna los balances (fiat y crypto) al endpoint que realizó la solicitud original
+
+---
+
 ## 📤 Eventos que PUBLICAMOS (Publishers)
 
 ### 1. `pedido.confirmar`
@@ -505,6 +539,26 @@ Este documento detalla todos los eventos que el sistema **escucha** y **publica*
 - `"precio"`: Se cambió el precio del producto
 - `"categoria_id"`: Se cambió la categoría del producto
 - `"imagenes"`: Se cambiaron las imágenes del producto
+
+---
+
+### 4. `get.balances.request`
+**Descripción:** Solicitud para obtener los balances de blockchain de un tenant  
+**Se publica cuando:** Un tenant solicita consultar sus balances a través del endpoint GET /balance
+
+**Formato de salida:**
+```json
+{
+  "topic": "get.balances.request",
+  "payload": {
+    "email": "tenant@example.com",
+    "traceData": {
+      "originModule": "marketplace-service",
+      "traceId": "tenant_id_123"
+    }
+  }
+}
+```
 
 ---
 
