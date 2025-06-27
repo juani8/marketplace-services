@@ -263,7 +263,7 @@ async function getBalance(req, res) {
     const traceId = tenantId.toString();
 
     // Crear promesa para esperar la respuesta
-    const balancePromise = createBalancePromise(traceId, 30000); // 30 segundos timeout
+    const balancePromise = createBalancePromise(traceId, 60000); // 30 segundos timeout
 
     // Publicar evento para solicitar balance
     try {
